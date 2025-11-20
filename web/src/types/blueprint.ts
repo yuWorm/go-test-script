@@ -10,8 +10,11 @@ export interface Position {
   y: number
 }
 
+export type PinKind = 'exec' | 'data' | 'error'
+
 export interface Pin {
   name: string
+  kind?: PinKind // 引脚类型：执行、数据或错误
   type: string
   value?: any
 }
@@ -46,6 +49,17 @@ export interface Blueprint {
 }
 
 /**
+ * 节点执行信息
+ */
+export interface NodeExecutionInfo {
+  node_id: string
+  status: 'idle' | 'success' | 'error' | 'skipped'
+  error?: string
+  outputs: Record<string, any>
+  duration: number
+}
+
+/**
  * 执行结果
  */
 export interface ExecutionResult {
@@ -54,6 +68,7 @@ export interface ExecutionResult {
   duration: number // 纳秒
   variables: Record<string, any>
   outputs: Record<string, any> // nodeID.pinName -> value
+  nodes: Record<string, NodeExecutionInfo> // 每个节点的执行信息
 }
 
 /**

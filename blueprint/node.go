@@ -23,6 +23,7 @@ type PinKind string
 const (
 	PinKindExecution PinKind = "exec"  // 执行引脚（白色箭头）
 	PinKindData      PinKind = "data"  // 数据引脚（彩色圆点）
+	PinKindError     PinKind = "error" // 错误引脚（红色闪电）
 )
 
 // Pin 表示节点的输入或输出引脚
@@ -47,6 +48,7 @@ type Node struct {
 	executor    NodeExecutor           // 节点执行器（编译时设置）
 	inputCache  map[string]interface{} // 输入缓存（运行时）
 	outputCache map[string]interface{} // 输出缓存（运行时）
+	lastError   error                  // 最后一次执行错误
 }
 
 // Position 表示节点在可视化编辑器中的位置
@@ -135,6 +137,23 @@ func (n *Node) ResetCache() {
 
 	n.inputCache = make(map[string]interface{})
 	n.outputCache = make(map[string]interface{})
+	n.lastError = nil
+}
+
+// SetError 设置节点错误
+func (n *Node) SetError(err error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.lastError = err
+}
+
+// GetError 获取节点错误
+func (n *Node) GetError() error {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	return n.lastError
 }
 
 // Validate 验证节点配置

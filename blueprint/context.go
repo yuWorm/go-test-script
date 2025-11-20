@@ -15,6 +15,7 @@ type ExecutionContext struct {
 	mu           sync.RWMutex
 	startTime    time.Time
 	errors       []error
+	nodeErrors   map[string][]error // 每个节点的错误
 	errorsMu     sync.Mutex
 	asyncManager *AsyncTaskManager // 异步任务管理器
 }
@@ -30,6 +31,7 @@ func NewExecutionContext(bp *Blueprint) *ExecutionContext {
 		variables:    make(map[string]interface{}),
 		startTime:    time.Now(),
 		errors:       make([]error, 0),
+		nodeErrors:   make(map[string][]error),
 		asyncManager: NewAsyncTaskManager(),
 	}
 
@@ -54,6 +56,7 @@ func NewExecutionContextWithTimeout(bp *Blueprint, timeout time.Duration) *Execu
 		variables:    make(map[string]interface{}),
 		startTime:    time.Now(),
 		errors:       make([]error, 0),
+		nodeErrors:   make(map[string][]error),
 		asyncManager: NewAsyncTaskManager(),
 	}
 
@@ -136,6 +139,36 @@ func (ec *ExecutionContext) HasErrors() bool {
 	defer ec.errorsMu.Unlock()
 
 	return len(ec.errors) > 0
+}
+
+// AddNodeError 添加节点错误（并发安全）
+func (ec *ExecutionContext) AddNodeError(nodeID string, err error) {
+	if err == nil {
+		return
+	}
+
+	ec.errorsMu.Lock()
+	defer ec.errorsMu.Unlock()
+
+	if ec.nodeErrors[nodeID] == nil {
+		ec.nodeErrors[nodeID] = make([]error, 0)
+	}
+	ec.nodeErrors[nodeID] = append(ec.nodeErrors[nodeID], err)
+	ec.errors = append(ec.errors, err)
+}
+
+// GetNodeErrors 获取特定节点的错误
+func (ec *ExecutionContext) GetNodeErrors(nodeID string) []error {
+	ec.errorsMu.Lock()
+	defer ec.errorsMu.Unlock()
+
+	if errs, ok := ec.nodeErrors[nodeID]; ok {
+		// 返回副本
+		result := make([]error, len(errs))
+		copy(result, errs)
+		return result
+	}
+	return nil
 }
 
 // GetExecutionDuration 获取执行时长

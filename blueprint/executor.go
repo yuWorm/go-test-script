@@ -98,6 +98,7 @@ func (e *Executor) Execute(bp *Blueprint, inputs map[string]interface{}) (*Execu
 		Duration:  ctx.GetExecutionDuration(),
 		Variables: ctx.GetAllVariables(),
 		Outputs:   e.collectOutputs(bp),
+		Nodes:     e.collectNodeInfo(ctx, bp),
 	}
 
 	if err != nil {
@@ -296,6 +297,9 @@ func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node)
 
 	outputs, err := node.executor.Execute(ctx, inputs)
 	if err != nil {
+		// 记录节点错误
+		ctx.AddNodeError(node.ID, err)
+		node.SetError(err)
 		return err
 	}
 
@@ -333,13 +337,23 @@ func (e *Executor) collectOutputs(bp *Blueprint) map[string]interface{} {
 	return outputs
 }
 
+// NodeExecutionInfo 节点执行信息
+type NodeExecutionInfo struct {
+	NodeID   string                 `json:"node_id"`  // 节点ID
+	Status   string                 `json:"status"`   // 状态：success, error, skipped, idle
+	Error    string                 `json:"error"`    // 错误信息（如果有）
+	Outputs  map[string]interface{} `json:"outputs"`  // 节点输出
+	Duration time.Duration          `json:"duration"` // 执行时长
+}
+
 // ExecutionResult 执行结果
 type ExecutionResult struct {
-	Success   bool                   // 是否成功
-	Errors    []error                // 错误列表
-	Duration  time.Duration          // 执行时长
-	Variables map[string]interface{} // 最终变量状态
-	Outputs   map[string]interface{} // 输出值（格式：nodeID.pinName -> value）
+	Success   bool                         // 是否成功
+	Errors    []error                      // 错误列表
+	Duration  time.Duration                // 执行时长
+	Variables map[string]interface{}       // 最终变量状态
+	Outputs   map[string]interface{}       // 输出值（格式：nodeID.pinName -> value）
+	Nodes     map[string]*NodeExecutionInfo // 每个节点的执行信息
 }
 
 // GetOutput 获取特定节点的输出值
@@ -547,4 +561,42 @@ func (e *Executor) shouldActivateExecPin(node *Node, execPinName string) bool {
 
 	// 默认情况下，激活所有执行输出
 	return true
+}
+
+// collectNodeInfo 收集每个节点的执行信息
+func (e *Executor) collectNodeInfo(ctx *ExecutionContext, bp *Blueprint) map[string]*NodeExecutionInfo {
+	nodeInfos := make(map[string]*NodeExecutionInfo)
+
+	for _, node := range bp.Nodes {
+		info := &NodeExecutionInfo{
+			NodeID:  node.ID,
+			Status:  "idle",
+			Outputs: make(map[string]interface{}),
+		}
+
+		// 检查节点是否有输出（说明已执行）
+		node.mu.RLock()
+		if node.outputCache != nil && len(node.outputCache) > 0 {
+			info.Status = "success"
+			// 复制输出
+			for k, v := range node.outputCache {
+				info.Outputs[k] = v
+			}
+		} else if node.lastError != nil {
+			info.Status = "error"
+			info.Error = node.lastError.Error()
+		}
+		node.mu.RUnlock()
+
+		// 如果上下文中有该节点的错误信息
+		nodeErrors := ctx.GetNodeErrors(node.ID)
+		if len(nodeErrors) > 0 {
+			info.Status = "error"
+			info.Error = nodeErrors[0].Error()
+		}
+
+		nodeInfos[node.ID] = info
+	}
+
+	return nodeInfos
 }

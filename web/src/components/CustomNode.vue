@@ -110,10 +110,18 @@ function isExecPin(pin: any): boolean {
   return pin.kind === 'exec' || pin.type === 'exec'
 }
 
+// 判断是否为错误引脚
+function isErrorPin(pin: any): boolean {
+  return pin.kind === 'error' || pin.type === 'error'
+}
+
 // 获取引脚图标
 function getPinIcon(pin: any): string {
   if (isExecPin(pin)) {
     return '▶' // 执行引脚：白色箭头
+  }
+  if (isErrorPin(pin)) {
+    return '⚡' // 错误引脚：闪电
   }
   return '●' // 数据引脚：圆点
 }
@@ -122,6 +130,9 @@ function getPinIcon(pin: any): string {
 function getPinHandleClass(pin: any): string {
   if (isExecPin(pin)) {
     return 'pin-handle-exec'
+  }
+  if (isErrorPin(pin)) {
+    return 'pin-handle-error'
   }
   return `pin-handle-${pin.type || 'any'}`
 }
@@ -265,6 +276,19 @@ function getPinHandleClass(pin: any): string {
 
 .pin-handle-exec:hover {
   background: #FFC107 !important;
+}
+
+/* 错误引脚样式 - 红色闪电形状 */
+.pin-handle-error {
+  background: #F44336 !important;
+  clip-path: polygon(50% 0%, 70% 40%, 100% 40%, 55% 100%, 45% 60%, 0% 60%);
+  width: 14px !important;
+  height: 14px !important;
+  border: none !important;
+}
+
+.pin-handle-error:hover {
+  background: #FF5722 !important;
 }
 
 /* 数据引脚颜色 */

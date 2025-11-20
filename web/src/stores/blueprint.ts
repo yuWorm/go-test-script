@@ -146,27 +146,22 @@ export const useBlueprintStore = defineStore('blueprint', () => {
       executionResult.value = result
 
       // 更新调试会话
-      if (debugSession.value) {
+      if (debugSession.value && result.nodes) {
         debugSession.value.endTime = Date.now()
         debugSession.value.status = result.success ? 'completed' : 'failed'
 
-        // 更新节点状态
-        blueprint.value.nodes.forEach(node => {
-          const nodeDebug = debugSession.value!.nodes.get(node.id)
-          if (nodeDebug) {
-            nodeDebug.status = result.success ? 'success' : 'error'
+        // 更新每个节点的状态（使用后端返回的节点信息）
+        for (const nodeId in result.nodes) {
+          const nodeInfo = result.nodes[nodeId]
+          const nodeDebug = debugSession.value.nodes.get(nodeId)
 
-            // 提取节点的输出
-            const nodeOutputs: Record<string, any> = {}
-            for (const key in result.outputs) {
-              if (key.startsWith(node.id + '.')) {
-                const pinName = key.substring(node.id.length + 1)
-                nodeOutputs[pinName] = result.outputs[key]
-              }
-            }
-            nodeDebug.outputs = nodeOutputs
+          if (nodeDebug) {
+            nodeDebug.status = nodeInfo.status
+            nodeDebug.error = nodeInfo.error
+            nodeDebug.outputs = nodeInfo.outputs
+            nodeDebug.duration = nodeInfo.duration
           }
-        })
+        }
       }
 
       return result

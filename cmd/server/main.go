@@ -64,6 +64,7 @@ func handleExecuteBlueprint(registry *blueprint.NodeRegistry) http.HandlerFunc {
 			"duration":  result.Duration,
 			"variables": result.Variables,
 			"outputs":   result.Outputs,
+			"nodes":     result.Nodes,
 		}
 
 		if len(result.Errors) > 0 {
