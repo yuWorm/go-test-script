@@ -225,3 +225,11 @@ func (b *Blueprint) GetExecutionOrder() ([]*Node, error) {
 
 	return b.executionOrder, nil
 }
+
+// InitNodeMap 初始化节点映射（用于从 JSON 反序列化后）
+func (b *Blueprint) InitNodeMap() {
+	b.nodeMap = make(map[string]*Node)
+	for _, node := range b.Nodes {
+		b.nodeMap[node.ID] = node
+	}
+}
