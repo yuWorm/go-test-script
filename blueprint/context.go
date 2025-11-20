@@ -8,14 +8,15 @@ import (
 
 // ExecutionContext 表示蓝图执行的上下文
 type ExecutionContext struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	blueprint *Blueprint
-	variables map[string]interface{} // 运行时变量
-	mu        sync.RWMutex
-	startTime time.Time
-	errors    []error
-	errorsMu  sync.Mutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	blueprint    *Blueprint
+	variables    map[string]interface{} // 运行时变量
+	mu           sync.RWMutex
+	startTime    time.Time
+	errors       []error
+	errorsMu     sync.Mutex
+	asyncManager *AsyncTaskManager // 异步任务管理器
 }
 
 // NewExecutionContext 创建一个新的执行上下文
@@ -23,12 +24,13 @@ func NewExecutionContext(bp *Blueprint) *ExecutionContext {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	execCtx := &ExecutionContext{
-		ctx:       ctx,
-		cancel:    cancel,
-		blueprint: bp,
-		variables: make(map[string]interface{}),
-		startTime: time.Now(),
-		errors:    make([]error, 0),
+		ctx:          ctx,
+		cancel:       cancel,
+		blueprint:    bp,
+		variables:    make(map[string]interface{}),
+		startTime:    time.Now(),
+		errors:       make([]error, 0),
+		asyncManager: NewAsyncTaskManager(),
 	}
 
 	// 复制蓝图全局变量到执行上下文
@@ -46,12 +48,13 @@ func NewExecutionContextWithTimeout(bp *Blueprint, timeout time.Duration) *Execu
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	execCtx := &ExecutionContext{
-		ctx:       ctx,
-		cancel:    cancel,
-		blueprint: bp,
-		variables: make(map[string]interface{}),
-		startTime: time.Now(),
-		errors:    make([]error, 0),
+		ctx:          ctx,
+		cancel:       cancel,
+		blueprint:    bp,
+		variables:    make(map[string]interface{}),
+		startTime:    time.Now(),
+		errors:       make([]error, 0),
+		asyncManager: NewAsyncTaskManager(),
 	}
 
 	// 复制蓝图全局变量到执行上下文
@@ -148,4 +151,9 @@ func (ec *ExecutionContext) IsCancelled() bool {
 	default:
 		return false
 	}
+}
+
+// GetAsyncManager 获取异步任务管理器
+func (ec *ExecutionContext) GetAsyncManager() *AsyncTaskManager {
+	return ec.asyncManager
 }

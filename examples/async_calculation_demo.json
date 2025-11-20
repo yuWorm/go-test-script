@@ -1,0 +1,112 @@
+{
+  "name": "Async Calculation Demo",
+  "version": "1.0.0",
+  "description": "演示异步执行：Start -> AsyncStart -> Sleep(2s) -> Calculate -> AsyncEnd -> Await -> End",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {
+          "name": "input_value",
+          "type": "float",
+          "value": 100
+        }
+      ],
+      "position": {"x": 100, "y": 250}
+    },
+    {
+      "id": "async_start",
+      "type": "function",
+      "operation": "async_start",
+      "label": "异步开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "started", "type": "bool"}
+      ],
+      "position": {"x": 300, "y": 250}
+    },
+    {
+      "id": "sleep",
+      "type": "function",
+      "operation": "sleep",
+      "label": "休眠2秒",
+      "input_pins": [
+        {"name": "duration", "type": "float", "value": 2000}
+      ],
+      "output_pins": [
+        {"name": "done", "type": "bool"}
+      ],
+      "position": {"x": 500, "y": 250}
+    },
+    {
+      "id": "multiply",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "乘以3",
+      "input_pins": [
+        {"name": "a", "type": "float"},
+        {"name": "b", "type": "float", "value": 3}
+      ],
+      "output_pins": [
+        {"name": "result", "type": "float"}
+      ],
+      "position": {"x": 700, "y": 250}
+    },
+    {
+      "id": "async_end",
+      "type": "function",
+      "operation": "async_end",
+      "label": "异步结束",
+      "input_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "result", "type": "any"}
+      ],
+      "output_pins": [
+        {"name": "completed", "type": "bool"},
+        {"name": "result_out", "type": "any"}
+      ],
+      "position": {"x": 900, "y": 250}
+    },
+    {
+      "id": "await",
+      "type": "function",
+      "operation": "await",
+      "label": "等待结果",
+      "input_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "timeout", "type": "float", "value": 10}
+      ],
+      "output_pins": [
+        {"name": "result", "type": "any"},
+        {"name": "completed", "type": "bool"}
+      ],
+      "position": {"x": 1100, "y": 250}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "final_result", "type": "float"}
+      ],
+      "output_pins": [],
+      "position": {"x": 1300, "y": 250}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "input_value", "target_node": "multiply", "target_pin": "a"},
+    {"id": "c2", "source_node": "async_start", "source_pin": "task_id", "target_node": "async_end", "target_pin": "task_id"},
+    {"id": "c3", "source_node": "multiply", "source_pin": "result", "target_node": "async_end", "target_pin": "result"},
+    {"id": "c4", "source_node": "async_start", "source_pin": "task_id", "target_node": "await", "target_pin": "task_id"},
+    {"id": "c5", "source_node": "async_end", "source_pin": "result_out", "target_node": "await", "target_pin": "timeout"},
+    {"id": "c6", "source_node": "await", "source_pin": "result", "target_node": "end", "target_pin": "final_result"}
+  ],
+  "variables": {},
+  "metadata": {
+    "description": "演示异步执行流程：输入100，休眠2秒后乘以3得300，使用await等待异步任务完成"
+  }
+}

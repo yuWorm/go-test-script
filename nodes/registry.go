@@ -44,4 +44,11 @@ func RegisterAllNodes(registry *blueprint.NodeRegistry) {
 	registry.Register(blueprint.NodeTypeFunction, "constant", NewConstantExecutor())
 	registry.Register(blueprint.NodeTypeFunction, "get_variable", NewVariableGetExecutor())
 	registry.Register(blueprint.NodeTypeFunction, "set_variable", NewVariableSetExecutor())
+	registry.Register(blueprint.NodeTypeFunction, "sleep", NewSleepExecutor())
+
+	// 异步执行节点
+	registry.Register(blueprint.NodeTypeFunction, "async_start", NewAsyncStartExecutor())
+	registry.Register(blueprint.NodeTypeFunction, "async_end", NewAsyncEndExecutor())
+	registry.Register(blueprint.NodeTypeFunction, "await", NewAwaitExecutor())
+	registry.Register(blueprint.NodeTypeFunction, "parallel", NewParallelExecutor())
 }

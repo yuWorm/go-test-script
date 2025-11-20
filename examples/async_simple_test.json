@@ -1,0 +1,90 @@
+{
+  "name": "Simple Async Test",
+  "version": "1.0.0",
+  "description": "最简单的异步测试：创建任务，设置结果，等待结果",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [],
+      "position": {"x": 100, "y": 250}
+    },
+    {
+      "id": "async_start",
+      "type": "function",
+      "operation": "async_start",
+      "label": "异步开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "started", "type": "bool"}
+      ],
+      "position": {"x": 300, "y": 250}
+    },
+    {
+      "id": "constant",
+      "type": "function",
+      "operation": "constant",
+      "label": "常量42",
+      "input_pins": [
+        {"name": "value", "type": "float", "value": 42}
+      ],
+      "output_pins": [
+        {"name": "output", "type": "any"}
+      ],
+      "position": {"x": 500, "y": 250}
+    },
+    {
+      "id": "async_end",
+      "type": "function",
+      "operation": "async_end",
+      "label": "异步结束",
+      "input_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "result", "type": "any"}
+      ],
+      "output_pins": [
+        {"name": "completed", "type": "bool"}
+      ],
+      "position": {"x": 700, "y": 250}
+    },
+    {
+      "id": "await",
+      "type": "function",
+      "operation": "await",
+      "label": "等待结果",
+      "input_pins": [
+        {"name": "task_id", "type": "string"},
+        {"name": "timeout", "type": "float", "value": 5}
+      ],
+      "output_pins": [
+        {"name": "result", "type": "any"},
+        {"name": "completed", "type": "bool"}
+      ],
+      "position": {"x": 900, "y": 250}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "result", "type": "any"}
+      ],
+      "output_pins": [],
+      "position": {"x": 1100, "y": 250}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "async_start", "source_pin": "task_id", "target_node": "async_end", "target_pin": "task_id"},
+    {"id": "c2", "source_node": "constant", "source_pin": "output", "target_node": "async_end", "target_pin": "result"},
+    {"id": "c3", "source_node": "async_start", "source_pin": "task_id", "target_node": "await", "target_pin": "task_id"},
+    {"id": "c4", "source_node": "async_end", "source_pin": "completed", "target_node": "await", "target_pin": "timeout"},
+    {"id": "c5", "source_node": "await", "source_pin": "result", "target_node": "end", "target_pin": "result"}
+  ],
+  "variables": {},
+  "metadata": {
+    "description": "测试异步任务创建、完成和等待的基本流程"
+  }
+}

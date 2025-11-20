@@ -1,0 +1,74 @@
+{
+  "name": "Simple Calculator Full",
+  "version": "1.0.0",
+  "description": "完整的计算器示例：Start -> 计算 -> End",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {
+          "name": "num_a",
+          "type": "float",
+          "value": 10
+        },
+        {
+          "name": "num_b",
+          "type": "float",
+          "value": 20
+        }
+      ],
+      "position": {"x": 100, "y": 200}
+    },
+    {
+      "id": "add",
+      "type": "arithmetic",
+      "operation": "add",
+      "label": "加法",
+      "input_pins": [
+        {"name": "a", "type": "float"},
+        {"name": "b", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "result", "type": "float"}
+      ],
+      "position": {"x": 350, "y": 150}
+    },
+    {
+      "id": "multiply",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "乘以2",
+      "input_pins": [
+        {"name": "a", "type": "float"},
+        {"name": "b", "type": "float", "value": 2}
+      ],
+      "output_pins": [
+        {"name": "result", "type": "float"}
+      ],
+      "position": {"x": 600, "y": 150}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "final_result", "type": "float"}
+      ],
+      "output_pins": [],
+      "position": {"x": 850, "y": 200}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "num_a", "target_node": "add", "target_pin": "a"},
+    {"id": "c2", "source_node": "start", "source_pin": "num_b", "target_node": "add", "target_pin": "b"},
+    {"id": "c3", "source_node": "add", "source_pin": "result", "target_node": "multiply", "target_pin": "a"},
+    {"id": "c4", "source_node": "multiply", "source_pin": "result", "target_node": "end", "target_pin": "final_result"}
+  ],
+  "variables": {},
+  "metadata": {
+    "description": "演示完整流程：输入10和20，相加得30，乘以2得60"
+  }
+}

@@ -332,6 +332,94 @@ export const nodeTemplates: NodeTemplate[] = [
       { name: 'value', type: 'any' }
     ]
   },
+  {
+    type: 'function',
+    operation: 'sleep',
+    label: '休眠',
+    description: '休眠指定毫秒数（模拟耗时操作）',
+    category: '函数',
+    icon: '💤',
+    color: '#607D8B',
+    inputPins: [
+      { name: 'duration', type: 'float', value: 1000 }
+    ],
+    outputPins: [
+      { name: 'duration', type: 'float' },
+      { name: 'done', type: 'bool' }
+    ]
+  },
+
+  // 异步执行节点
+  {
+    type: 'function',
+    operation: 'async_start',
+    label: '异步开始',
+    description: '创建异步任务，后续节点异步执行',
+    category: '异步',
+    icon: '🚀',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'task_id', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'task_id', type: 'string' },
+      { name: 'started', type: 'bool' }
+    ]
+  },
+  {
+    type: 'function',
+    operation: 'async_end',
+    label: '异步结束',
+    description: '结束异步任务，返回结果',
+    category: '异步',
+    icon: '🏁',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'task_id', type: 'string' },
+      { name: 'result', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'task_id', type: 'string' },
+      { name: 'completed', type: 'bool' },
+      { name: 'result', type: 'any' }
+    ]
+  },
+  {
+    type: 'function',
+    operation: 'await',
+    label: '等待结果',
+    description: '等待异步任务完成并获取结果',
+    category: '异步',
+    icon: '⏳',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'task_id', type: 'string' },
+      { name: 'timeout', type: 'float', value: 30 }
+    ],
+    outputPins: [
+      { name: 'result', type: 'any' },
+      { name: 'completed', type: 'bool' }
+    ]
+  },
+  {
+    type: 'function',
+    operation: 'parallel',
+    label: '并行等待',
+    description: '等待多个异步任务完成',
+    category: '异步',
+    icon: '⚡',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'task_id_1', type: 'string' },
+      { name: 'task_id_2', type: 'string' }
+    ],
+    outputPins: [
+      { name: 'result_0', type: 'any' },
+      { name: 'result_1', type: 'any' },
+      { name: 'count', type: 'float' },
+      { name: 'all_completed', type: 'bool' }
+    ]
+  },
 
   // 特殊节点
   {
