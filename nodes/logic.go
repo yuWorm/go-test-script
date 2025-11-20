@@ -63,6 +63,31 @@ func (e *LogicExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[stri
 	}
 }
 
+// Compile 在编译时对未连接的输入引脚进行类型转换
+func (e *LogicExecutor) Compile(node *blueprint.Node, connectedInputs map[string]bool) error {
+	// 遍历所有输入引脚
+	for i := range node.InputPins {
+		pin := &node.InputPins[i]
+
+		// 跳过执行引脚和错误引脚
+		if pin.Kind == blueprint.PinKindExecution || pin.Kind == blueprint.PinKindError {
+			continue
+		}
+
+		// 只处理未连接且有默认值的引脚
+		if !connectedInputs[pin.Name] && pin.Value != nil {
+			// 将值转换为 bool 类型
+			boolVal, err := toBool(pin.Value)
+			if err != nil {
+				return fmt.Errorf("failed to convert pin '%s' value to bool: %w", pin.Name, err)
+			}
+			pin.Value = boolVal
+		}
+	}
+
+	return nil
+}
+
 // Validate 验证节点配置
 func (e *LogicExecutor) Validate(node *blueprint.Node) error {
 	if e.operation == "not" {

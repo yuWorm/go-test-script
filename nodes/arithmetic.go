@@ -68,6 +68,31 @@ func (e *ArithmeticExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map
 	return outputs, nil
 }
 
+// Compile 在编译时对未连接的输入引脚进行类型转换
+func (e *ArithmeticExecutor) Compile(node *blueprint.Node, connectedInputs map[string]bool) error {
+	// 遍历所有输入引脚
+	for i := range node.InputPins {
+		pin := &node.InputPins[i]
+
+		// 跳过执行引脚和错误引脚
+		if pin.Kind == blueprint.PinKindExecution || pin.Kind == blueprint.PinKindError {
+			continue
+		}
+
+		// 只处理未连接且有默认值的引脚
+		if !connectedInputs[pin.Name] && pin.Value != nil {
+			// 将值转换为 float64 类型
+			floatVal, err := toFloat64(pin.Value)
+			if err != nil {
+				return fmt.Errorf("failed to convert pin '%s' value to float: %w", pin.Name, err)
+			}
+			pin.Value = floatVal
+		}
+	}
+
+	return nil
+}
+
 // Validate 验证节点配置
 func (e *ArithmeticExecutor) Validate(node *blueprint.Node) error {
 	// 检查输入引脚
@@ -155,6 +180,31 @@ func (e *ComparisonExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map
 	}, nil
 }
 
+// Compile 在编译时对未连接的输入引脚进行类型转换
+func (e *ComparisonExecutor) Compile(node *blueprint.Node, connectedInputs map[string]bool) error {
+	// 遍历所有输入引脚
+	for i := range node.InputPins {
+		pin := &node.InputPins[i]
+
+		// 跳过执行引脚和错误引脚
+		if pin.Kind == blueprint.PinKindExecution || pin.Kind == blueprint.PinKindError {
+			continue
+		}
+
+		// 只处理未连接且有默认值的引脚
+		if !connectedInputs[pin.Name] && pin.Value != nil {
+			// 将值转换为 float64 类型
+			floatVal, err := toFloat64(pin.Value)
+			if err != nil {
+				return fmt.Errorf("failed to convert pin '%s' value to float: %w", pin.Name, err)
+			}
+			pin.Value = floatVal
+		}
+	}
+
+	return nil
+}
+
 // Validate 验证节点配置
 func (e *ComparisonExecutor) Validate(node *blueprint.Node) error {
 	if len(node.InputPins) < 2 {
@@ -185,7 +235,26 @@ func toFloat64(v interface{}) (float64, error) {
 		return float64(val), nil
 	case uint64:
 		return float64(val), nil
+	case string:
+		// 尝试解析字符串为浮点数
+		if f, err := parseFloat(val); err == nil {
+			return f, nil
+		}
+		return 0, fmt.Errorf("cannot convert string '%s' to float64", val)
+	case bool:
+		if val {
+			return 1.0, nil
+		}
+		return 0.0, nil
 	default:
 		return 0, fmt.Errorf("cannot convert %T to float64", v)
 	}
+}
+
+// parseFloat 解析字符串为浮点数
+func parseFloat(s string) (float64, error) {
+	// 简单的浮点数解析
+	var result float64
+	_, err := fmt.Sscanf(s, "%f", &result)
+	return result, err
 }

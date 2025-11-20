@@ -77,6 +77,17 @@ type NodeExecutor interface {
 	Validate(node *Node) error
 }
 
+// NodeCompiler 定义节点编译器接口（可选）
+// 节点可以实现此接口，在编译时进行自定义处理
+// 例如：类型转换、默认值预处理、静态检查等
+type NodeCompiler interface {
+	// Compile 在编译时调用，可以修改节点的引脚值等
+	// node: 要编译的节点
+	// connectedInputs: 已连接的输入引脚名称集合
+	// 返回: 错误（如果编译失败）
+	Compile(node *Node, connectedInputs map[string]bool) error
+}
+
 // GetInputValue 并发安全地获取输入值
 func (n *Node) GetInputValue(pinName string) (interface{}, bool) {
 	n.mu.RLock()

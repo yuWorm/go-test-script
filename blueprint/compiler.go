@@ -47,17 +47,22 @@ func (c *Compiler) Compile(bp *Blueprint) error {
 		return fmt.Errorf("failed to attach executors: %w", err)
 	}
 
-	// 4. 拓扑排序
+	// 4. 构建连接映射（需要在类型转换之前，以便知道哪些引脚有连接）
+	bp.connectionMap = c.buildConnectionMap(bp)
+
+	// 5. 调用节点的编译方法（如果节点实现了 NodeCompiler 接口）
+	if err := c.compileNodes(bp); err != nil {
+		return fmt.Errorf("node compilation failed: %w", err)
+	}
+
+	// 6. 拓扑排序
 	executionOrder, err := c.topologicalSort(bp)
 	if err != nil {
 		return fmt.Errorf("topological sort failed: %w", err)
 	}
 	bp.executionOrder = executionOrder
 
-	// 5. 构建连接映射
-	bp.connectionMap = c.buildConnectionMap(bp)
-
-	// 6. 标记为已编译
+	// 7. 标记为已编译
 	bp.compiled = true
 
 	return nil
@@ -149,6 +154,28 @@ func (c *Compiler) buildConnectionMap(bp *Blueprint) map[string][]Connection {
 	}
 
 	return connMap
+}
+
+// compileNodes 调用每个节点的编译方法（如果实现了 NodeCompiler 接口）
+func (c *Compiler) compileNodes(bp *Blueprint) error {
+	for _, node := range bp.Nodes {
+		// 检查节点执行器是否实现了 NodeCompiler 接口
+		if compiler, ok := node.executor.(NodeCompiler); ok {
+			// 构建已连接的输入引脚集合
+			connectedInputs := make(map[string]bool)
+			if connections, exists := bp.connectionMap[node.ID]; exists {
+				for _, conn := range connections {
+					connectedInputs[conn.TargetPin] = true
+				}
+			}
+
+			// 调用节点的编译方法
+			if err := compiler.Compile(node, connectedInputs); err != nil {
+				return fmt.Errorf("node %s (%s): %w", node.ID, node.Label, err)
+			}
+		}
+	}
+	return nil
 }
 
 // NodeRegistry 节点注册表，管理所有节点类型和执行器
