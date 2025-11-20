@@ -1,0 +1,370 @@
+{
+  "name": "Multi-Tier Discount Calculator",
+  "version": "1.0.0",
+  "description": "多层折扣计算器：根据会员等级、购买金额和优惠券类型计算最终价格",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"},
+        {"name": "original_price", "kind": "data", "type": "float", "value": 1000},
+        {"name": "member_level", "kind": "data", "type": "float", "value": 2},
+        {"name": "has_coupon", "kind": "data", "type": "bool", "value": true}
+      ],
+      "position": {"x": 50, "y": 400}
+    },
+    {
+      "id": "check_vip_level",
+      "type": "arithmetic",
+      "operation": "greater_equal",
+      "label": "会员级别 >= 3?",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 3}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 250, "y": 400}
+    },
+    {
+      "id": "branch_vip",
+      "type": "function",
+      "operation": "branch",
+      "label": "VIP分支",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "condition", "kind": "data", "type": "bool"}
+      ],
+      "output_pins": [
+        {"name": "true_exec", "kind": "exec", "type": "exec"},
+        {"name": "false_exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 450, "y": 400}
+    },
+    {
+      "id": "vip_discount",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "VIP折扣 0.7",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 0.7}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 650, "y": 300}
+    },
+    {
+      "id": "check_regular_member",
+      "type": "arithmetic",
+      "operation": "greater_equal",
+      "label": "会员级别 >= 1?",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 1}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 650, "y": 500}
+    },
+    {
+      "id": "branch_member",
+      "type": "function",
+      "operation": "branch",
+      "label": "会员分支",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "condition", "kind": "data", "type": "bool"}
+      ],
+      "output_pins": [
+        {"name": "true_exec", "kind": "exec", "type": "exec"},
+        {"name": "false_exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 850, "y": 500}
+    },
+    {
+      "id": "member_discount",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "会员折扣 0.85",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 0.85}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 1050, "y": 450}
+    },
+    {
+      "id": "no_member_discount",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "无折扣 1.0",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 1.0}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 1050, "y": 550}
+    },
+    {
+      "id": "check_high_amount",
+      "type": "arithmetic",
+      "operation": "greater",
+      "label": "折后价 > 500?",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 500}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 1250, "y": 400}
+    },
+    {
+      "id": "branch_amount",
+      "type": "function",
+      "operation": "branch",
+      "label": "金额分支",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "condition", "kind": "data", "type": "bool"}
+      ],
+      "output_pins": [
+        {"name": "true_exec", "kind": "exec", "type": "exec"},
+        {"name": "false_exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 1450, "y": 400}
+    },
+    {
+      "id": "large_order_bonus",
+      "type": "arithmetic",
+      "operation": "subtract",
+      "label": "大额减免 -50",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 50}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 1650, "y": 350}
+    },
+    {
+      "id": "no_large_bonus",
+      "type": "arithmetic",
+      "operation": "subtract",
+      "label": "无大额减免",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 0}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 1650, "y": 450}
+    },
+    {
+      "id": "check_coupon",
+      "type": "logic",
+      "operation": "and",
+      "label": "有优惠券?",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "bool"},
+        {"name": "b", "kind": "data", "type": "bool", "value": true}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 1850, "y": 400}
+    },
+    {
+      "id": "branch_coupon",
+      "type": "function",
+      "operation": "branch",
+      "label": "优惠券分支",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "condition", "kind": "data", "type": "bool"}
+      ],
+      "output_pins": [
+        {"name": "true_exec", "kind": "exec", "type": "exec"},
+        {"name": "false_exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 2050, "y": 400}
+    },
+    {
+      "id": "coupon_discount",
+      "type": "arithmetic",
+      "operation": "subtract",
+      "label": "优惠券减 100",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 100}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 2250, "y": 350}
+    },
+    {
+      "id": "no_coupon",
+      "type": "arithmetic",
+      "operation": "subtract",
+      "label": "无优惠券",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float", "value": 0}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 2250, "y": 450}
+    },
+    {
+      "id": "calc_savings",
+      "type": "arithmetic",
+      "operation": "subtract",
+      "label": "计算节省金额",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 2450, "y": 400}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "original_price", "kind": "data", "type": "float"},
+        {"name": "final_price", "kind": "data", "type": "float"},
+        {"name": "savings", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [],
+      "position": {"x": 2650, "y": 400}
+    }
+  ],
+  "connections": [
+    {"id": "e1", "source_node": "start", "source_pin": "exec", "target_node": "check_vip_level", "target_pin": "exec_in"},
+    {"id": "d1", "source_node": "start", "source_pin": "member_level", "target_node": "check_vip_level", "target_pin": "a"},
+
+    {"id": "e2", "source_node": "check_vip_level", "source_pin": "exec_out", "target_node": "branch_vip", "target_pin": "exec_in"},
+    {"id": "d2", "source_node": "check_vip_level", "source_pin": "result", "target_node": "branch_vip", "target_pin": "condition"},
+
+    {"id": "e3_true", "source_node": "branch_vip", "source_pin": "true_exec", "target_node": "vip_discount", "target_pin": "exec_in"},
+    {"id": "d3", "source_node": "start", "source_pin": "original_price", "target_node": "vip_discount", "target_pin": "a"},
+
+    {"id": "e3_false", "source_node": "branch_vip", "source_pin": "false_exec", "target_node": "check_regular_member", "target_pin": "exec_in"},
+    {"id": "d4", "source_node": "start", "source_pin": "member_level", "target_node": "check_regular_member", "target_pin": "a"},
+
+    {"id": "e4", "source_node": "check_regular_member", "source_pin": "exec_out", "target_node": "branch_member", "target_pin": "exec_in"},
+    {"id": "d5", "source_node": "check_regular_member", "source_pin": "result", "target_node": "branch_member", "target_pin": "condition"},
+
+    {"id": "e5_true", "source_node": "branch_member", "source_pin": "true_exec", "target_node": "member_discount", "target_pin": "exec_in"},
+    {"id": "d6", "source_node": "start", "source_pin": "original_price", "target_node": "member_discount", "target_pin": "a"},
+
+    {"id": "e5_false", "source_node": "branch_member", "source_pin": "false_exec", "target_node": "no_member_discount", "target_pin": "exec_in"},
+    {"id": "d7", "source_node": "start", "source_pin": "original_price", "target_node": "no_member_discount", "target_pin": "a"},
+
+    {"id": "e6_vip", "source_node": "vip_discount", "source_pin": "exec_out", "target_node": "check_high_amount", "target_pin": "exec_in"},
+    {"id": "d8", "source_node": "vip_discount", "source_pin": "result", "target_node": "check_high_amount", "target_pin": "a"},
+
+    {"id": "e6_member", "source_node": "member_discount", "source_pin": "exec_out", "target_node": "check_high_amount", "target_pin": "exec_in"},
+    {"id": "d9", "source_node": "member_discount", "source_pin": "result", "target_node": "check_high_amount", "target_pin": "a"},
+
+    {"id": "e6_no_member", "source_node": "no_member_discount", "source_pin": "exec_out", "target_node": "check_high_amount", "target_pin": "exec_in"},
+    {"id": "d10", "source_node": "no_member_discount", "source_pin": "result", "target_node": "check_high_amount", "target_pin": "a"},
+
+    {"id": "e7", "source_node": "check_high_amount", "source_pin": "exec_out", "target_node": "branch_amount", "target_pin": "exec_in"},
+    {"id": "d11", "source_node": "check_high_amount", "source_pin": "result", "target_node": "branch_amount", "target_pin": "condition"},
+
+    {"id": "e8_true", "source_node": "branch_amount", "source_pin": "true_exec", "target_node": "large_order_bonus", "target_pin": "exec_in"},
+    {"id": "d12_vip", "source_node": "vip_discount", "source_pin": "result", "target_node": "large_order_bonus", "target_pin": "a"},
+    {"id": "d12_member", "source_node": "member_discount", "source_pin": "result", "target_node": "large_order_bonus", "target_pin": "a"},
+    {"id": "d12_no", "source_node": "no_member_discount", "source_pin": "result", "target_node": "large_order_bonus", "target_pin": "a"},
+
+    {"id": "e8_false", "source_node": "branch_amount", "source_pin": "false_exec", "target_node": "no_large_bonus", "target_pin": "exec_in"},
+    {"id": "d13_vip", "source_node": "vip_discount", "source_pin": "result", "target_node": "no_large_bonus", "target_pin": "a"},
+    {"id": "d13_member", "source_node": "member_discount", "source_pin": "result", "target_node": "no_large_bonus", "target_pin": "a"},
+    {"id": "d13_no", "source_node": "no_member_discount", "source_pin": "result", "target_node": "no_large_bonus", "target_pin": "a"},
+
+    {"id": "e9_large", "source_node": "large_order_bonus", "source_pin": "exec_out", "target_node": "check_coupon", "target_pin": "exec_in"},
+    {"id": "e9_no_large", "source_node": "no_large_bonus", "source_pin": "exec_out", "target_node": "check_coupon", "target_pin": "exec_in"},
+    {"id": "d14", "source_node": "start", "source_pin": "has_coupon", "target_node": "check_coupon", "target_pin": "a"},
+
+    {"id": "e10", "source_node": "check_coupon", "source_pin": "exec_out", "target_node": "branch_coupon", "target_pin": "exec_in"},
+    {"id": "d15", "source_node": "check_coupon", "source_pin": "result", "target_node": "branch_coupon", "target_pin": "condition"},
+
+    {"id": "e11_true", "source_node": "branch_coupon", "source_pin": "true_exec", "target_node": "coupon_discount", "target_pin": "exec_in"},
+    {"id": "d16_large", "source_node": "large_order_bonus", "source_pin": "result", "target_node": "coupon_discount", "target_pin": "a"},
+    {"id": "d16_no_large", "source_node": "no_large_bonus", "source_pin": "result", "target_node": "coupon_discount", "target_pin": "a"},
+
+    {"id": "e11_false", "source_node": "branch_coupon", "source_pin": "false_exec", "target_node": "no_coupon", "target_pin": "exec_in"},
+    {"id": "d17_large", "source_node": "large_order_bonus", "source_pin": "result", "target_node": "no_coupon", "target_pin": "a"},
+    {"id": "d17_no_large", "source_node": "no_large_bonus", "source_pin": "result", "target_node": "no_coupon", "target_pin": "a"},
+
+    {"id": "e12_coupon", "source_node": "coupon_discount", "source_pin": "exec_out", "target_node": "calc_savings", "target_pin": "exec_in"},
+    {"id": "d18_coupon", "source_node": "coupon_discount", "source_pin": "result", "target_node": "calc_savings", "target_pin": "b"},
+
+    {"id": "e12_no_coupon", "source_node": "no_coupon", "source_pin": "exec_out", "target_node": "calc_savings", "target_pin": "exec_in"},
+    {"id": "d18_no_coupon", "source_node": "no_coupon", "source_pin": "result", "target_node": "calc_savings", "target_pin": "b"},
+
+    {"id": "d19", "source_node": "start", "source_pin": "original_price", "target_node": "calc_savings", "target_pin": "a"},
+
+    {"id": "e13", "source_node": "calc_savings", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"},
+    {"id": "d20", "source_node": "start", "source_pin": "original_price", "target_node": "end", "target_pin": "original_price"},
+    {"id": "d21_coupon", "source_node": "coupon_discount", "source_pin": "result", "target_node": "end", "target_pin": "final_price"},
+    {"id": "d21_no_coupon", "source_node": "no_coupon", "source_pin": "result", "target_node": "end", "target_pin": "final_price"},
+    {"id": "d22", "source_node": "calc_savings", "source_pin": "result", "target_node": "end", "target_pin": "savings"}
+  ],
+  "variables": {},
+  "metadata": {
+    "description": "多层折扣计算器：会员等级折扣 -> 大额订单优惠 -> 优惠券折扣，展示复杂的条件判断和计算流程",
+    "discount_rules": {
+      "member_level_3+": "VIP折扣 30% (0.7x)",
+      "member_level_1-2": "会员折扣 15% (0.85x)",
+      "member_level_0": "无会员折扣",
+      "large_order_500+": "大额减免 50元",
+      "coupon": "优惠券减免 100元"
+    },
+    "expected_result": "原价1000, 会员2级(0.85), 折后850, 大额优惠-50=800, 优惠券-100=700, 节省300元"
+  }
+}
