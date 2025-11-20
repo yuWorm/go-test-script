@@ -19,17 +19,19 @@
         v-for="pin in data.input_pins"
         :key="pin.name"
         class="pin-row input-pin"
+        :class="{ 'exec-pin': isExecPin(pin) }"
       >
         <Handle
           :id="pin.name"
           type="target"
           :position="Position.Left"
-          class="pin-handle"
+          :class="['pin-handle', getPinHandleClass(pin)]"
         />
+        <span class="pin-icon">{{ getPinIcon(pin) }}</span>
         <span class="pin-label">{{ pin.name }}</span>
         <span class="pin-type">{{ pin.type }}</span>
         <input
-          v-if="pin.value !== undefined"
+          v-if="pin.value !== undefined && !isExecPin(pin)"
           v-model="pin.value"
           type="number"
           class="pin-value"
@@ -44,17 +46,19 @@
         v-for="pin in data.output_pins"
         :key="pin.name"
         class="pin-row output-pin"
+        :class="{ 'exec-pin': isExecPin(pin) }"
       >
+        <span class="pin-icon">{{ getPinIcon(pin) }}</span>
         <span class="pin-label">{{ pin.name }}</span>
         <span class="pin-type">{{ pin.type }}</span>
-        <span v-if="debugInfo?.outputs?.[pin.name] !== undefined" class="pin-output-value">
+        <span v-if="debugInfo?.outputs?.[pin.name] !== undefined && !isExecPin(pin)" class="pin-output-value">
           {{ formatValue(debugInfo.outputs[pin.name]) }}
         </span>
         <Handle
           :id="pin.name"
           type="source"
           :position="Position.Right"
-          class="pin-handle"
+          :class="['pin-handle', getPinHandleClass(pin)]"
         />
       </div>
     </div>
@@ -99,6 +103,27 @@ function formatValue(value: any): string {
     return value ? 'true' : 'false'
   }
   return String(value)
+}
+
+// 判断是否为执行引脚
+function isExecPin(pin: any): boolean {
+  return pin.kind === 'exec' || pin.type === 'exec'
+}
+
+// 获取引脚图标
+function getPinIcon(pin: any): string {
+  if (isExecPin(pin)) {
+    return '▶' // 执行引脚：白色箭头
+  }
+  return '●' // 数据引脚：圆点
+}
+
+// 获取引脚样式类
+function getPinHandleClass(pin: any): string {
+  if (isExecPin(pin)) {
+    return 'pin-handle-exec'
+  }
+  return `pin-handle-${pin.type || 'any'}`
 }
 </script>
 
@@ -204,23 +229,81 @@ function formatValue(value: any): string {
   font-size: 11px;
 }
 
+.pin-icon {
+  font-size: 12px;
+  margin-right: 4px;
+  line-height: 1;
+}
+
+.exec-pin .pin-icon {
+  color: #fff;
+  font-weight: bold;
+}
+
 .pin-handle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 12px !important;
+  height: 12px !important;
   background: #666;
   border: 2px solid #fff;
+  border-radius: 50%;
+  transition: all 0.2s ease;
 }
 
 .pin-handle:hover {
   background: #4CAF50;
+  transform: scale(1.2);
+}
+
+/* 执行引脚样式 - 白色箭头形状 */
+.pin-handle-exec {
+  background: #fff !important;
+  clip-path: polygon(0% 50%, 40% 0%, 40% 35%, 100% 35%, 100% 65%, 40% 65%, 40% 100%);
+  width: 14px !important;
+  height: 14px !important;
+  border: none !important;
+}
+
+.pin-handle-exec:hover {
+  background: #FFC107 !important;
+}
+
+/* 数据引脚颜色 */
+.pin-handle-float,
+.pin-handle-number {
+  background: #4CAF50 !important;
+}
+
+.pin-handle-string {
+  background: #E91E63 !important;
+}
+
+.pin-handle-bool,
+.pin-handle-boolean {
+  background: #F44336 !important;
+}
+
+.pin-handle-any {
+  background: #9C27B0 !important;
 }
 
 .input-pin .pin-handle {
-  left: -6px;
+  left: -7px;
 }
 
 .output-pin .pin-handle {
-  right: -6px;
+  right: -7px;
+}
+
+/* 执行引脚行样式 */
+.exec-pin {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #fff;
+  padding-left: 9px !important;
+}
+
+.exec-pin .pin-label {
+  color: #fff;
+  font-weight: bold;
 }
 
 .node-error {

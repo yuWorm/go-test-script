@@ -14,11 +14,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '+',
     color: '#4CAF50',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float' },
+      { name: 'b', kind: 'data', type: 'float' }
     ],
     outputPins: [
-      { name: 'result', type: 'float' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'float' }
     ]
   },
   {
@@ -421,6 +423,25 @@ export const nodeTemplates: NodeTemplate[] = [
     ]
   },
 
+  // 执行流控制节点
+  {
+    type: 'function',
+    operation: 'branch',
+    label: '分支',
+    description: '根据条件选择执行分支',
+    category: '执行流',
+    icon: '◆',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'condition', kind: 'data', type: 'bool', value: true }
+    ],
+    outputPins: [
+      { name: 'true_exec', kind: 'exec', type: 'exec' },
+      { name: 'false_exec', kind: 'exec', type: 'exec' }
+    ]
+  },
+
   // 特殊节点
   {
     type: 'start',
@@ -430,7 +451,9 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '▶',
     color: '#8BC34A',
     inputPins: [],
-    outputPins: []
+    outputPins: [
+      { name: 'exec', kind: 'exec', type: 'exec' }
+    ]
   },
   {
     type: 'end',
@@ -439,7 +462,9 @@ export const nodeTemplates: NodeTemplate[] = [
     category: '特殊',
     icon: '■',
     color: '#F44336',
-    inputPins: [],
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' }
+    ],
     outputPins: []
   }
 ]
