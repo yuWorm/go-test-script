@@ -1,0 +1,186 @@
+package nodes
+
+import (
+	"fmt"
+	"github.com/go-blueprint-engine/blueprint"
+)
+
+// ConditionExecutor 条件分支执行器
+type ConditionExecutor struct{}
+
+// NewConditionExecutor 创建条件分支执行器
+func NewConditionExecutor() *ConditionExecutor {
+	return &ConditionExecutor{}
+}
+
+// Execute 执行条件分支
+func (e *ConditionExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	condition, err := toBool(inputs["condition"])
+	if err != nil {
+		return nil, fmt.Errorf("invalid condition: %w", err)
+	}
+
+	outputs := make(map[string]interface{})
+
+	if condition {
+		if trueValue, exists := inputs["true_value"]; exists {
+			outputs["result"] = trueValue
+		}
+		outputs["is_true"] = true
+		outputs["is_false"] = false
+	} else {
+		if falseValue, exists := inputs["false_value"]; exists {
+			outputs["result"] = falseValue
+		}
+		outputs["is_true"] = false
+		outputs["is_false"] = true
+	}
+
+	return outputs, nil
+}
+
+// Validate 验证节点配置
+func (e *ConditionExecutor) Validate(node *blueprint.Node) error {
+	hasCondition := false
+	for _, pin := range node.InputPins {
+		if pin.Name == "condition" {
+			hasCondition = true
+			break
+		}
+	}
+
+	if !hasCondition {
+		return fmt.Errorf("condition node must have 'condition' input pin")
+	}
+
+	return nil
+}
+
+// ConstantExecutor 常量节点执行器
+type ConstantExecutor struct{}
+
+// NewConstantExecutor 创建常量节点执行器
+func NewConstantExecutor() *ConstantExecutor {
+	return &ConstantExecutor{}
+}
+
+// Execute 执行常量节点（直接输出配置的值）
+func (e *ConstantExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	// 常量节点从属性中获取值
+	value, exists := inputs["value"]
+	if !exists {
+		return nil, fmt.Errorf("constant node requires 'value' input")
+	}
+
+	return map[string]interface{}{
+		"output": value,
+	}, nil
+}
+
+// Validate 验证节点配置
+func (e *ConstantExecutor) Validate(node *blueprint.Node) error {
+	if len(node.OutputPins) < 1 {
+		return fmt.Errorf("constant node requires at least 1 output pin")
+	}
+	return nil
+}
+
+// VariableGetExecutor 获取变量执行器
+type VariableGetExecutor struct{}
+
+// NewVariableGetExecutor 创建获取变量执行器
+func NewVariableGetExecutor() *VariableGetExecutor {
+	return &VariableGetExecutor{}
+}
+
+// Execute 执行获取变量
+func (e *VariableGetExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	varName, ok := inputs["name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("variable name must be a string")
+	}
+
+	value, exists := ctx.GetVariable(varName)
+	if !exists {
+		return nil, fmt.Errorf("variable %s not found", varName)
+	}
+
+	return map[string]interface{}{
+		"value": value,
+	}, nil
+}
+
+// Validate 验证节点配置
+func (e *VariableGetExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}
+
+// VariableSetExecutor 设置变量执行器
+type VariableSetExecutor struct{}
+
+// NewVariableSetExecutor 创建设置变量执行器
+func NewVariableSetExecutor() *VariableSetExecutor {
+	return &VariableSetExecutor{}
+}
+
+// Execute 执行设置变量
+func (e *VariableSetExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	varName, ok := inputs["name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("variable name must be a string")
+	}
+
+	value, exists := inputs["value"]
+	if !exists {
+		return nil, fmt.Errorf("value is required")
+	}
+
+	ctx.SetVariable(varName, value)
+
+	return map[string]interface{}{
+		"value": value,
+	}, nil
+}
+
+// Validate 验证节点配置
+func (e *VariableSetExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}
+
+// StartExecutor 开始节点执行器
+type StartExecutor struct{}
+
+// NewStartExecutor 创建开始节点执行器
+func NewStartExecutor() *StartExecutor {
+	return &StartExecutor{}
+}
+
+// Execute 执行开始节点
+func (e *StartExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	// 开始节点只是传递输入到输出
+	return inputs, nil
+}
+
+// Validate 验证节点配置
+func (e *StartExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}
+
+// EndExecutor 结束节点执行器
+type EndExecutor struct{}
+
+// NewEndExecutor 创建结束节点执行器
+func NewEndExecutor() *EndExecutor {
+	return &EndExecutor{}
+}
+
+// Execute 执行结束节点
+func (e *EndExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	// 结束节点只是接收输入
+	return inputs, nil
+}
+
+// Validate 验证节点配置
+func (e *EndExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}

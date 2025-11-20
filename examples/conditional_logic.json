@@ -1,0 +1,284 @@
+{
+  "name": "Conditional Logic",
+  "version": "1.0.0",
+  "description": "Demonstrates conditional branching: if (a > b) then a * 2 else b * 3",
+  "nodes": [
+    {
+      "id": "const_a",
+      "type": "function",
+      "operation": "constant",
+      "label": "Value A",
+      "input_pins": [
+        {
+          "name": "value",
+          "type": "float",
+          "value": 15
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "output",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 100,
+        "y": 100
+      }
+    },
+    {
+      "id": "const_b",
+      "type": "function",
+      "operation": "constant",
+      "label": "Value B",
+      "input_pins": [
+        {
+          "name": "value",
+          "type": "float",
+          "value": 10
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "output",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 100,
+        "y": 200
+      }
+    },
+    {
+      "id": "compare",
+      "type": "arithmetic",
+      "operation": "greater",
+      "label": "A > B",
+      "input_pins": [
+        {
+          "name": "a",
+          "type": "float"
+        },
+        {
+          "name": "b",
+          "type": "float"
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "result",
+          "type": "bool"
+        }
+      ],
+      "position": {
+        "x": 300,
+        "y": 150
+      }
+    },
+    {
+      "id": "const_2",
+      "type": "function",
+      "operation": "constant",
+      "label": "Constant 2",
+      "input_pins": [
+        {
+          "name": "value",
+          "type": "float",
+          "value": 2
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "output",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 300,
+        "y": 50
+      }
+    },
+    {
+      "id": "const_3",
+      "type": "function",
+      "operation": "constant",
+      "label": "Constant 3",
+      "input_pins": [
+        {
+          "name": "value",
+          "type": "float",
+          "value": 3
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "output",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "id": "multiply_a",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "A * 2",
+      "input_pins": [
+        {
+          "name": "a",
+          "type": "float"
+        },
+        {
+          "name": "b",
+          "type": "float"
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "result",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 500,
+        "y": 100
+      }
+    },
+    {
+      "id": "multiply_b",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "B * 3",
+      "input_pins": [
+        {
+          "name": "a",
+          "type": "float"
+        },
+        {
+          "name": "b",
+          "type": "float"
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "result",
+          "type": "float"
+        }
+      ],
+      "position": {
+        "x": 500,
+        "y": 250
+      }
+    },
+    {
+      "id": "condition",
+      "type": "condition",
+      "label": "Select Result",
+      "input_pins": [
+        {
+          "name": "condition",
+          "type": "bool"
+        },
+        {
+          "name": "true_value",
+          "type": "any"
+        },
+        {
+          "name": "false_value",
+          "type": "any"
+        }
+      ],
+      "output_pins": [
+        {
+          "name": "result",
+          "type": "any"
+        },
+        {
+          "name": "is_true",
+          "type": "bool"
+        },
+        {
+          "name": "is_false",
+          "type": "bool"
+        }
+      ],
+      "position": {
+        "x": 700,
+        "y": 175
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "source_node": "const_a",
+      "source_pin": "output",
+      "target_node": "compare",
+      "target_pin": "a"
+    },
+    {
+      "id": "conn2",
+      "source_node": "const_b",
+      "source_pin": "output",
+      "target_node": "compare",
+      "target_pin": "b"
+    },
+    {
+      "id": "conn3",
+      "source_node": "const_a",
+      "source_pin": "output",
+      "target_node": "multiply_a",
+      "target_pin": "a"
+    },
+    {
+      "id": "conn4",
+      "source_node": "const_2",
+      "source_pin": "output",
+      "target_node": "multiply_a",
+      "target_pin": "b"
+    },
+    {
+      "id": "conn5",
+      "source_node": "const_b",
+      "source_pin": "output",
+      "target_node": "multiply_b",
+      "target_pin": "a"
+    },
+    {
+      "id": "conn6",
+      "source_node": "const_3",
+      "source_pin": "output",
+      "target_node": "multiply_b",
+      "target_pin": "b"
+    },
+    {
+      "id": "conn7",
+      "source_node": "compare",
+      "source_pin": "result",
+      "target_node": "condition",
+      "target_pin": "condition"
+    },
+    {
+      "id": "conn8",
+      "source_node": "multiply_a",
+      "source_pin": "result",
+      "target_node": "condition",
+      "target_pin": "true_value"
+    },
+    {
+      "id": "conn9",
+      "source_node": "multiply_b",
+      "source_pin": "result",
+      "target_node": "condition",
+      "target_pin": "false_value"
+    }
+  ],
+  "variables": {},
+  "metadata": {
+    "author": "Blueprint Engine",
+    "created": "2025-11-20"
+  }
+}
