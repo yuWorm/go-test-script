@@ -204,6 +204,86 @@ export const nodeTemplates: NodeTemplate[] = [
       { name: 'is_false', type: 'bool' }
     ]
   },
+  {
+    type: 'condition',
+    operation: 'if_else',
+    label: 'If/Else',
+    description: 'If 条件判断，执行不同分支',
+    category: '控制流',
+    icon: 'IF',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'condition', type: 'bool' },
+      { name: 'then_value', type: 'any' },
+      { name: 'else_value', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'result', type: 'any' },
+      { name: 'then_exec', type: 'bool' },
+      { name: 'else_exec', type: 'bool' }
+    ]
+  },
+  {
+    type: 'condition',
+    operation: 'for_loop',
+    label: 'For 循环',
+    description: '从 start 到 end 循环，步长为 step',
+    category: '控制流',
+    icon: 'FOR',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'start', type: 'float', value: 0 },
+      { name: 'end', type: 'float', value: 10 },
+      { name: 'step', type: 'float', value: 1 }
+    ],
+    outputPins: [
+      { name: 'index', type: 'float' },
+      { name: 'count', type: 'float' },
+      { name: 'completed', type: 'bool' }
+    ]
+  },
+  {
+    type: 'condition',
+    operation: 'while_loop',
+    label: 'While 循环',
+    description: '当条件为真时循环执行',
+    category: '控制流',
+    icon: 'WHILE',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'condition', type: 'bool', value: true }
+    ],
+    outputPins: [
+      { name: 'iterations', type: 'float' },
+      { name: 'completed', type: 'bool' }
+    ]
+  },
+  {
+    type: 'condition',
+    operation: 'break',
+    label: 'Break',
+    description: '跳出循环',
+    category: '控制流',
+    icon: '⊗',
+    color: '#E91E63',
+    inputPins: [],
+    outputPins: [
+      { name: 'break', type: 'bool' }
+    ]
+  },
+  {
+    type: 'condition',
+    operation: 'continue',
+    label: 'Continue',
+    description: '继续下一次循环',
+    category: '控制流',
+    icon: '↻',
+    color: '#E91E63',
+    inputPins: [],
+    outputPins: [
+      { name: 'continue', type: 'bool' }
+    ]
+  },
 
   // 函数节点
   {
@@ -257,7 +337,7 @@ export const nodeTemplates: NodeTemplate[] = [
   {
     type: 'start',
     label: '开始',
-    description: '蓝图开始节点',
+    description: '蓝图开始节点（可添加输出引脚作为蓝图输入）',
     category: '特殊',
     icon: '▶',
     color: '#8BC34A',
@@ -267,7 +347,7 @@ export const nodeTemplates: NodeTemplate[] = [
   {
     type: 'end',
     label: '结束',
-    description: '蓝图结束节点',
+    description: '蓝图结束节点（可添加输入引脚作为蓝图输出）',
     category: '特殊',
     icon: '■',
     color: '#F44336',

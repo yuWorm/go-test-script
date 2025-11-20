@@ -30,6 +30,11 @@ func RegisterAllNodes(registry *blueprint.NodeRegistry) {
 
 	// 控制流节点
 	registry.Register(blueprint.NodeTypeCondition, "", NewConditionExecutor())
+	registry.Register(blueprint.NodeTypeCondition, "if_else", NewIfElseExecutor())
+	registry.Register(blueprint.NodeTypeCondition, "for_loop", NewForLoopExecutor())
+	registry.Register(blueprint.NodeTypeCondition, "while_loop", NewWhileLoopExecutor())
+	registry.Register(blueprint.NodeTypeCondition, "break", NewBreakExecutor())
+	registry.Register(blueprint.NodeTypeCondition, "continue", NewContinueExecutor())
 
 	// 特殊节点
 	registry.Register(blueprint.NodeTypeStart, "", NewStartExecutor())

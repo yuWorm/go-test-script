@@ -157,7 +157,11 @@ func NewStartExecutor() *StartExecutor {
 
 // Execute 执行开始节点
 func (e *StartExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// 开始节点只是传递输入到输出
+	// 开始节点没有输入，但有输出引脚
+	// 输出引脚的值来自引脚的默认值
+	// 这些值已经在节点的 OutputPins 中定义
+	// executeNode 会从输入获取，但对于 Start 节点，我们返回空映射
+	// 实际的值会在 executeNode 中从 pin.Value 读取
 	return inputs, nil
 }
 

@@ -4,7 +4,10 @@
     <div class="app-content">
       <NodePalette />
       <BlueprintCanvas ref="canvas" />
-      <DebugPanel />
+      <div class="right-panels">
+        <PropertyPanel />
+        <DebugPanel />
+      </div>
     </div>
   </div>
 </template>
@@ -14,6 +17,7 @@ import { onMounted, ref } from 'vue'
 import Toolbar from './components/Toolbar.vue'
 import NodePalette from './components/NodePalette.vue'
 import BlueprintCanvas from './components/BlueprintCanvas.vue'
+import PropertyPanel from './components/PropertyPanel.vue'
 import DebugPanel from './components/DebugPanel.vue'
 
 const canvas = ref<InstanceType<typeof BlueprintCanvas>>()
@@ -52,5 +56,10 @@ html, body, #app {
   flex: 1;
   display: flex;
   overflow: hidden;
+}
+
+.right-panels {
+  display: flex;
+  height: 100%;
 }
 </style>

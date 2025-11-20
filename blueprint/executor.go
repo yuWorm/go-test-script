@@ -299,6 +299,15 @@ func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node)
 		node.SetOutputValue(pinName, value)
 	}
 
+	// 特殊处理：Start 节点的输出来自其输出引脚的默认值
+	if node.Type == NodeTypeStart {
+		for _, pin := range node.OutputPins {
+			if pin.Value != nil {
+				node.SetOutputValue(pin.Name, pin.Value)
+			}
+		}
+	}
+
 	return nil
 }
 
