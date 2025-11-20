@@ -56,9 +56,16 @@ func (e *ArithmeticExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map
 		return nil, fmt.Errorf("unknown arithmetic operation: %s", e.operation)
 	}
 
-	return map[string]interface{}{
+	outputs := map[string]interface{}{
 		"result": result,
-	}, nil
+	}
+
+	// 如果有执行输入，则输出执行信号
+	if _, hasExecIn := inputs["exec_in"]; hasExecIn {
+		outputs["exec_out"] = true
+	}
+
+	return outputs, nil
 }
 
 // Validate 验证节点配置

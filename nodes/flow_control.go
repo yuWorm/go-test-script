@@ -210,3 +210,49 @@ func (e *ContinueExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[s
 func (e *ContinueExecutor) Validate(node *blueprint.Node) error {
 	return nil
 }
+
+// BranchExecutor Branch 分支执行器（专用于执行流）
+type BranchExecutor struct{}
+
+// NewBranchExecutor 创建 Branch 执行器
+func NewBranchExecutor() *BranchExecutor {
+	return &BranchExecutor{}
+}
+
+// Execute 执行 Branch - 根据条件激活不同的执行引脚
+func (e *BranchExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	condition, err := toBool(inputs["condition"])
+	if err != nil {
+		return nil, fmt.Errorf("invalid condition: %w", err)
+	}
+
+	outputs := make(map[string]interface{})
+
+	// 根据条件设置执行输出引脚的激活状态
+	if condition {
+		outputs["true_exec"] = true
+		outputs["false_exec"] = false
+	} else {
+		outputs["true_exec"] = false
+		outputs["false_exec"] = true
+	}
+
+	return outputs, nil
+}
+
+// Validate 验证节点配置
+func (e *BranchExecutor) Validate(node *blueprint.Node) error {
+	hasCondition := false
+	for _, pin := range node.InputPins {
+		if pin.Name == "condition" {
+			hasCondition = true
+			break
+		}
+	}
+
+	if !hasCondition {
+		return fmt.Errorf("branch node must have 'condition' input pin")
+	}
+
+	return nil
+}

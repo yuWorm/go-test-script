@@ -77,27 +77,43 @@ func (b *Blueprint) AddConnection(conn Connection) error {
 	}
 
 	// 验证源引脚
-	sourcePinExists := false
-	for _, pin := range sourceNode.OutputPins {
-		if pin.Name == conn.SourcePin {
-			sourcePinExists = true
+	var sourcePin *Pin
+	for i := range sourceNode.OutputPins {
+		if sourceNode.OutputPins[i].Name == conn.SourcePin {
+			sourcePin = &sourceNode.OutputPins[i]
 			break
 		}
 	}
-	if !sourcePinExists {
+	if sourcePin == nil {
 		return fmt.Errorf("source pin %s not found in node %s", conn.SourcePin, conn.SourceNode)
 	}
 
 	// 验证目标引脚
-	targetPinExists := false
-	for _, pin := range targetNode.InputPins {
-		if pin.Name == conn.TargetPin {
-			targetPinExists = true
+	var targetPin *Pin
+	for i := range targetNode.InputPins {
+		if targetNode.InputPins[i].Name == conn.TargetPin {
+			targetPin = &targetNode.InputPins[i]
 			break
 		}
 	}
-	if !targetPinExists {
+	if targetPin == nil {
 		return fmt.Errorf("target pin %s not found in node %s", conn.TargetPin, conn.TargetNode)
+	}
+
+	// 验证引脚类型匹配
+	// 如果Kind为空，默认为数据引脚（向后兼容）
+	sourcePinKind := sourcePin.Kind
+	if sourcePinKind == "" {
+		sourcePinKind = PinKindData
+	}
+	targetPinKind := targetPin.Kind
+	if targetPinKind == "" {
+		targetPinKind = PinKindData
+	}
+
+	// 执行引脚只能连接到执行引脚，数据引脚只能连接到数据引脚
+	if sourcePinKind != targetPinKind {
+		return fmt.Errorf("pin kind mismatch: cannot connect %s pin to %s pin", sourcePinKind, targetPinKind)
 	}
 
 	b.Connections = append(b.Connections, conn)

@@ -17,9 +17,18 @@ const (
 	NodeTypeFunction   NodeType = "function"
 )
 
+// PinKind 定义引脚类型
+type PinKind string
+
+const (
+	PinKindExecution PinKind = "exec"  // 执行引脚（白色箭头）
+	PinKindData      PinKind = "data"  // 数据引脚（彩色圆点）
+)
+
 // Pin 表示节点的输入或输出引脚
 type Pin struct {
 	Name  string      `json:"name"`
+	Kind  PinKind     `json:"kind"`  // "exec" 或 "data"，默认为 "data"
 	Type  string      `json:"type"`  // "int", "float", "string", "bool", "any"
 	Value interface{} `json:"value"` // 默认值或实际值
 }

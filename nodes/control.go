@@ -162,7 +162,12 @@ func (e *StartExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[stri
 	// 这些值已经在节点的 OutputPins 中定义
 	// executeNode 会从输入获取，但对于 Start 节点，我们返回空映射
 	// 实际的值会在 executeNode 中从 pin.Value 读取
-	return inputs, nil
+
+	// 输出执行信号
+	outputs := make(map[string]interface{})
+	outputs["exec"] = true // 执行引脚始终激活
+
+	return outputs, nil
 }
 
 // Validate 验证节点配置
@@ -180,8 +185,21 @@ func NewEndExecutor() *EndExecutor {
 
 // Execute 执行结束节点
 func (e *EndExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// 结束节点只是接收输入
-	return inputs, nil
+	// 结束节点接收输入并标记为已执行
+	outputs := make(map[string]interface{})
+
+	// 保留所有输入数据
+	for key, value := range inputs {
+		// 跳过执行引脚
+		if key != "exec_in" {
+			outputs[key] = value
+		}
+	}
+
+	// 添加执行完成标记
+	outputs["executed"] = true
+
+	return outputs, nil
 }
 
 // Validate 验证节点配置

@@ -14,6 +14,8 @@ const (
 	ExecutionModeSequential ExecutionMode = iota
 	// ExecutionModeParallel 并行执行（在可能的情况下并行执行无依赖的节点）
 	ExecutionModeParallel
+	// ExecutionModeExecutionFlow 执行流模式（类似UE5，只执行被执行引脚连接的节点）
+	ExecutionModeExecutionFlow
 )
 
 // ExecutionOptions 执行选项
@@ -80,9 +82,12 @@ func (e *Executor) Execute(bp *Blueprint, inputs map[string]interface{}) (*Execu
 
 	// 根据执行模式执行
 	var err error
-	if e.options.Mode == ExecutionModeParallel {
+	switch e.options.Mode {
+	case ExecutionModeParallel:
 		err = e.executeParallel(ctx, bp)
-	} else {
+	case ExecutionModeExecutionFlow:
+		err = e.executeWithExecutionFlow(ctx, bp)
+	default:
 		err = e.executeSequential(ctx, bp)
 	}
 
@@ -316,13 +321,13 @@ func (e *Executor) collectOutputs(bp *Blueprint) map[string]interface{} {
 	outputs := make(map[string]interface{})
 
 	for _, node := range bp.Nodes {
-		// 收集所有节点的输出（可以根据需要过滤特定类型的节点）
-		for _, pin := range node.OutputPins {
-			if value, ok := node.GetOutputValue(pin.Name); ok {
-				key := fmt.Sprintf("%s.%s", node.ID, pin.Name)
-				outputs[key] = value
-			}
+		// 收集所有节点的输出缓存
+		node.mu.RLock()
+		for pinName, value := range node.outputCache {
+			key := fmt.Sprintf("%s.%s", node.ID, pinName)
+			outputs[key] = value
 		}
+		node.mu.RUnlock()
 	}
 
 	return outputs
@@ -357,4 +362,196 @@ func (r *ExecutionResult) GetNodeOutputs(nodeID string) map[string]interface{} {
 	}
 
 	return outputs
+}
+
+// executeWithExecutionFlow 使用执行流模式执行蓝图
+// 只执行通过执行引脚连接的节点（类似UE5）
+func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint) error {
+	// 构建执行流图：从每个节点的执行输出引脚到目标节点的映射
+	// execFlowMap: nodeID -> execOutputPin -> [(targetNodeID, targetExecInputPin)]
+	execFlowMap := make(map[string]map[string][]*execFlowTarget)
+
+	for _, conn := range bp.Connections {
+		sourceNode := bp.nodeMap[conn.SourceNode]
+		if sourceNode == nil {
+			continue
+		}
+
+		// 检查是否是执行引脚连接
+		var sourcePin *Pin
+		for i := range sourceNode.OutputPins {
+			if sourceNode.OutputPins[i].Name == conn.SourcePin {
+				sourcePin = &sourceNode.OutputPins[i]
+				break
+			}
+		}
+
+		if sourcePin == nil {
+			continue
+		}
+
+		// 如果是执行引脚连接
+		sourcePinKind := sourcePin.Kind
+		if sourcePinKind == "" {
+			sourcePinKind = PinKindData
+		}
+
+		if sourcePinKind == PinKindExecution {
+			if execFlowMap[conn.SourceNode] == nil {
+				execFlowMap[conn.SourceNode] = make(map[string][]*execFlowTarget)
+			}
+			execFlowMap[conn.SourceNode][conn.SourcePin] = append(
+				execFlowMap[conn.SourceNode][conn.SourcePin],
+				&execFlowTarget{
+					nodeID:      conn.TargetNode,
+					execPinName: conn.TargetPin,
+				},
+			)
+		}
+	}
+
+	// 找到入口节点：Start节点或有执行输出但没有执行输入的节点
+	entryNodes := make([]*Node, 0)
+	for _, node := range bp.Nodes {
+		// Start节点总是入口节点
+		if node.Type == NodeTypeStart {
+			entryNodes = append(entryNodes, node)
+			continue
+		}
+
+		// 检查是否有执行输出引脚
+		hasExecOutput := false
+		for _, pin := range node.OutputPins {
+			pinKind := pin.Kind
+			if pinKind == "" {
+				pinKind = PinKindData
+			}
+			if pinKind == PinKindExecution {
+				hasExecOutput = true
+				break
+			}
+		}
+
+		if !hasExecOutput {
+			continue
+		}
+
+		// 检查是否有执行输入引脚被连接
+		hasExecInput := false
+		for _, conn := range bp.Connections {
+			if conn.TargetNode == node.ID {
+				targetNode := bp.nodeMap[conn.TargetNode]
+				if targetNode != nil {
+					for _, pin := range targetNode.InputPins {
+						if pin.Name == conn.TargetPin {
+							pinKind := pin.Kind
+							if pinKind == "" {
+								pinKind = PinKindData
+							}
+							if pinKind == PinKindExecution {
+								hasExecInput = true
+								break
+							}
+						}
+					}
+				}
+				if hasExecInput {
+					break
+				}
+			}
+		}
+
+		// 没有执行输入但有执行输出，是入口节点
+		if !hasExecInput {
+			entryNodes = append(entryNodes, node)
+		}
+	}
+
+	// 从入口节点开始执行
+	for _, entryNode := range entryNodes {
+		if err := e.executeNodeAndFollowExecFlow(ctx, bp, entryNode, execFlowMap); err != nil {
+			if e.options.StopOnError {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// execFlowTarget 执行流目标
+type execFlowTarget struct {
+	nodeID      string
+	execPinName string
+}
+
+// executeNodeAndFollowExecFlow 执行节点并跟随执行流
+func (e *Executor) executeNodeAndFollowExecFlow(
+	ctx *ExecutionContext,
+	bp *Blueprint,
+	node *Node,
+	execFlowMap map[string]map[string][]*execFlowTarget,
+) error {
+	// 检查是否取消
+	if ctx.IsCancelled() {
+		return fmt.Errorf("execution cancelled")
+	}
+
+	// 执行节点
+	if err := e.executeNode(ctx, bp, node); err != nil {
+		ctx.AddError(fmt.Errorf("node %s execution failed: %w", node.ID, err))
+		return err
+	}
+
+	// 获取该节点的执行流输出
+	execOutputs, exists := execFlowMap[node.ID]
+	if !exists || len(execOutputs) == 0 {
+		// 没有执行流输出，结束
+		return nil
+	}
+
+	// 遍历所有执行输出引脚
+	for execPinName, targets := range execOutputs {
+		// 检查该执行输出引脚是否应该激活
+		// 对于普通节点，所有执行输出都激活
+		// 对于分支节点（如Branch），只激活对应条件的输出
+		shouldActivate := e.shouldActivateExecPin(node, execPinName)
+
+		if shouldActivate {
+			// 执行所有连接到此执行引脚的目标节点
+			for _, target := range targets {
+				targetNode := bp.nodeMap[target.nodeID]
+				if targetNode == nil {
+					continue
+				}
+
+				// 递归执行目标节点
+				if err := e.executeNodeAndFollowExecFlow(ctx, bp, targetNode, execFlowMap); err != nil {
+					if e.options.StopOnError {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// shouldActivateExecPin 判断执行引脚是否应该激活
+func (e *Executor) shouldActivateExecPin(node *Node, execPinName string) bool {
+	// 对于Branch节点，检查输出来决定激活哪个分支
+	if node.Operation == "branch" || node.Operation == "if_else" {
+		// 检查节点的输出
+		if execOutput, ok := node.GetOutputValue(execPinName); ok {
+			// 如果输出是布尔值且为true，则激活
+			if boolVal, isBool := execOutput.(bool); isBool {
+				return boolVal
+			}
+		}
+		return false
+	}
+
+	// 默认情况下，激活所有执行输出
+	return true
 }

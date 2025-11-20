@@ -36,6 +36,9 @@ func RegisterAllNodes(registry *blueprint.NodeRegistry) {
 	registry.Register(blueprint.NodeTypeCondition, "break", NewBreakExecutor())
 	registry.Register(blueprint.NodeTypeCondition, "continue", NewContinueExecutor())
 
+	// 执行流节点
+	registry.Register(blueprint.NodeTypeFunction, "branch", NewBranchExecutor())
+
 	// 特殊节点
 	registry.Register(blueprint.NodeTypeStart, "", NewStartExecutor())
 	registry.Register(blueprint.NodeTypeEnd, "", NewEndExecutor())
