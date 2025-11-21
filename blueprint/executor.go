@@ -300,17 +300,30 @@ func (e *Executor) executeParallel(ctx *ExecutionContext, bp *Blueprint) error {
 	return firstError
 }
 
-// executeNode 执行单个节点
-func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node) error {
-	// 收集输入数据
-	inputs := make(map[string]interface{})
+// 优化：复用 inputs map 池
+var inputsPool = sync.Pool{
+	New: func() interface{} {
+		return make(map[string]interface{}, 8)
+	},
+}
 
-	// 从连接获取输入
+// executeNode 执行单个节点（优化版）
+func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node) error {
+	// 从池获取 inputs map 并清空复用
+	inputs := inputsPool.Get().(map[string]interface{})
+	for k := range inputs {
+		delete(inputs, k)
+	}
+	defer inputsPool.Put(inputs)
+
+	// 从连接获取输入（直接访问 outputCache 避免 mutex 开销）
 	if connections, exists := bp.connectionMap[node.ID]; exists {
 		for _, conn := range connections {
 			sourceNode := bp.nodeMap[conn.SourceNode]
-			if value, ok := sourceNode.GetOutputValue(conn.SourcePin); ok {
-				inputs[conn.TargetPin] = value
+			if sourceNode.outputCache != nil {
+				if value, ok := sourceNode.outputCache[conn.SourcePin]; ok {
+					inputs[conn.TargetPin] = value
+				}
 			}
 		}
 	}
@@ -329,22 +342,24 @@ func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node)
 
 	outputs, err := node.executor.Execute(ctx, inputs)
 	if err != nil {
-		// 记录节点错误
 		ctx.AddNodeError(node.ID, err)
 		node.SetError(err)
 		return err
 	}
 
-	// 保存输出
+	// 直接写入 outputCache（单线程热路径安全，跳过 mutex）
+	if node.outputCache == nil {
+		node.outputCache = make(map[string]interface{}, len(outputs))
+	}
 	for pinName, value := range outputs {
-		node.SetOutputValue(pinName, value)
+		node.outputCache[pinName] = value
 	}
 
-	// 特殊处理：Start 节点的输出来自其输出引脚的默认值
+	// 特殊处理：Start 节点
 	if node.Type == NodeTypeStart {
 		for _, pin := range node.OutputPins {
 			if pin.Value != nil {
-				node.SetOutputValue(pin.Name, pin.Value)
+				node.outputCache[pin.Name] = pin.Value
 			}
 		}
 	}

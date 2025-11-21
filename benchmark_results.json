@@ -3,140 +3,140 @@
     "language": "Go",
     "n": 10,
     "result": 55,
-    "time_ms": 0.000175,
+    "time_ms": 0.000243,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 10,
     "result": 55,
-    "time_ms": 0.29822,
+    "time_ms": 0.283021,
     "memory_kb": 6
   },
   {
     "language": "Python",
     "n": 10,
     "result": 55,
-    "time_ms": 0.012163000064902008,
+    "time_ms": 0.011426999890318257,
     "memory_kb": 0
   },
   {
     "language": "Tengo",
     "n": 10,
     "result": 55,
-    "time_ms": 0.341644,
+    "time_ms": 0.392114,
     "memory_kb": 134
   },
   {
     "language": "Blueprint",
     "n": 10,
     "result": 55,
-    "time_ms": 0.319328,
-    "memory_kb": 171
+    "time_ms": 0.200342,
+    "memory_kb": 135
   },
   {
     "language": "Go",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.000243,
+    "time_ms": 0.00021,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.36732,
+    "time_ms": 0.356313,
     "memory_kb": 8
   },
   {
     "language": "Python",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.017696999975669314,
+    "time_ms": 0.015706999874964822,
     "memory_kb": 0
   },
   {
     "language": "Tengo",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.210906,
+    "time_ms": 0.416753,
     "memory_kb": 134
   },
   {
     "language": "Blueprint",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.629923,
-    "memory_kb": 250
+    "time_ms": 0.268636,
+    "memory_kb": 174
   },
   {
     "language": "Go",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.000199,
+    "time_ms": 0.000236,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.361594,
+    "time_ms": 0.277826,
     "memory_kb": 10
   },
   {
     "language": "Python",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.01867399987531826,
+    "time_ms": 0.01982100002351217,
     "memory_kb": 0
   },
   {
     "language": "Tengo",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.302724,
+    "time_ms": 0.253599,
     "memory_kb": 134
   },
   {
     "language": "Blueprint",
     "n": 30,
     "result": 832040,
-    "time_ms": 1.21013,
-    "memory_kb": 329
+    "time_ms": 0.344511,
+    "memory_kb": 214
   },
   {
     "language": "Go",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.000188,
+    "time_ms": 0.00018,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.359288,
+    "time_ms": 0.338466,
     "memory_kb": 13
   },
   {
     "language": "Python",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.021287999970809324,
+    "time_ms": 0.022221999870453146,
     "memory_kb": 0
   },
   {
     "language": "Tengo",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.26625,
-    "memory_kb": 134
+    "time_ms": 0.210508,
+    "memory_kb": 135
   },
   {
     "language": "Blueprint",
     "n": 40,
     "result": 102334155,
-    "time_ms": 3.902086,
-    "memory_kb": 408
+    "time_ms": 0.302636,
+    "memory_kb": 253
   }
 ]
