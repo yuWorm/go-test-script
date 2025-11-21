@@ -50,7 +50,7 @@ func (e *DataGetVariableExecutor) Execute(ctx *blueprint.ExecutionContext, input
 		return nil, fmt.Errorf("variable name must be a string")
 	}
 
-	value, exists := ctx.GetVariable(varName)
+	value, exists := ctx.GetVariableFast(varName)
 	if !exists {
 		// 变量不存在时返回 nil，而不是报错
 		return map[string]interface{}{

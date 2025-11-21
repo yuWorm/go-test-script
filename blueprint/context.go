@@ -23,6 +23,37 @@ type ExecutionContext struct {
 	returned    bool                   // 是否已返回
 	returnValue map[string]interface{} // 返回值
 	returnMu    sync.RWMutex
+
+	// 优化：快速变量访问（单线程模式下跳过锁）
+	fastMode bool // 是否启用快速模式（单线程执行）
+}
+
+// EnableFastMode 启用快速模式（单线程执行，跳过锁）
+func (ec *ExecutionContext) EnableFastMode() {
+	ec.fastMode = true
+}
+
+// GetVariableFast 快速获取变量（快速模式下跳过锁）
+func (ec *ExecutionContext) GetVariableFast(name string) (interface{}, bool) {
+	if ec.fastMode {
+		val, ok := ec.variables[name]
+		return val, ok
+	}
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+	val, ok := ec.variables[name]
+	return val, ok
+}
+
+// SetVariableFast 快速设置变量（快速模式下跳过锁）
+func (ec *ExecutionContext) SetVariableFast(name string, value interface{}) {
+	if ec.fastMode {
+		ec.variables[name] = value
+		return
+	}
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
+	ec.variables[name] = value
 }
 
 // NewExecutionContext 创建一个新的执行上下文

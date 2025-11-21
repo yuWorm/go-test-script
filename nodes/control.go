@@ -100,7 +100,7 @@ func (e *VariableGetExecutor) Execute(ctx *blueprint.ExecutionContext, inputs ma
 		return nil, fmt.Errorf("variable name must be a string")
 	}
 
-	value, exists := ctx.GetVariable(varName)
+	value, exists := ctx.GetVariableFast(varName)
 	if !exists {
 		return nil, fmt.Errorf("variable %s not found", varName)
 	}
@@ -135,7 +135,7 @@ func (e *VariableSetExecutor) Execute(ctx *blueprint.ExecutionContext, inputs ma
 		return nil, fmt.Errorf("value is required")
 	}
 
-	ctx.SetVariable(varName, value)
+	ctx.SetVariableFast(varName, value)
 
 	return map[string]interface{}{
 		"value": value,

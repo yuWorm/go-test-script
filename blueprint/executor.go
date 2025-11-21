@@ -89,6 +89,11 @@ func (e *Executor) Execute(bp *Blueprint, inputs map[string]interface{}) (*Execu
 		}
 	}
 
+	// 启用快速模式（ExecutionFlow模式默认单线程执行）
+	if e.options.Mode == ExecutionModeExecutionFlow || e.options.Mode == ExecutionModeSequential {
+		ctx.EnableFastMode()
+	}
+
 	// 重置所有节点的缓存
 	for _, node := range bp.Nodes {
 		node.ResetCache()
@@ -300,8 +305,14 @@ func (e *Executor) executeParallel(ctx *ExecutionContext, bp *Blueprint) error {
 	return firstError
 }
 
-// 优化：复用 inputs map 池
+// 优化：复用 inputs/outputs map 池
 var inputsPool = sync.Pool{
+	New: func() interface{} {
+		return make(map[string]interface{}, 8)
+	},
+}
+
+var outputsPool = sync.Pool{
 	New: func() interface{} {
 		return make(map[string]interface{}, 8)
 	},
