@@ -146,15 +146,20 @@ func NewDelayExecutor() *DelayExecutor {
 	return &DelayExecutor{}
 }
 
-// Execute 执行延时
+// Execute 执行延时（支持取消）
 func (e *DelayExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
 	duration, err := toFloat64(inputs["duration"])
 	if err != nil {
 		duration = 1000 // 默认1秒
 	}
 
-	// 真正的延时
-	time.Sleep(time.Duration(duration) * time.Millisecond)
+	// 使用 select 支持取消
+	select {
+	case <-time.After(time.Duration(duration) * time.Millisecond):
+		// 正常完成
+	case <-ctx.Context().Done():
+		return nil, fmt.Errorf("delay cancelled")
+	}
 
 	return map[string]interface{}{
 		"duration": duration,

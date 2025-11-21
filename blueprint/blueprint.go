@@ -143,16 +143,46 @@ func (b *Blueprint) Validate() error {
 		return fmt.Errorf("blueprint name cannot be empty")
 	}
 
+	// 验证蓝图名称格式
+	if len(b.Name) > 256 {
+		return fmt.Errorf("blueprint name too long (max 256 characters)")
+	}
+
 	// 验证所有节点
 	nodeIDs := make(map[string]bool)
+	hasStart := false
 	for _, node := range b.Nodes {
 		if err := node.Validate(); err != nil {
 			return err
+		}
+		// 验证节点ID格式
+		if len(node.ID) > 128 {
+			return fmt.Errorf("node ID too long: %s (max 128 characters)", node.ID)
 		}
 		if nodeIDs[node.ID] {
 			return fmt.Errorf("duplicate node ID: %s", node.ID)
 		}
 		nodeIDs[node.ID] = true
+
+		// 检查是否有Start节点
+		if node.Type == NodeTypeStart {
+			hasStart = true
+		}
+	}
+
+	// 必须有Start节点
+	if !hasStart && len(b.Nodes) > 0 {
+		return fmt.Errorf("blueprint must have a start node")
+	}
+
+	// 验证变量名
+	for varName := range b.Variables {
+		if len(varName) > 128 {
+			return fmt.Errorf("variable name too long: %s (max 128 characters)", varName)
+		}
+		if !isValidIdentifier(varName) {
+			return fmt.Errorf("invalid variable name: %s (must be alphanumeric with underscores)", varName)
+		}
 	}
 
 	// 验证所有连接
@@ -248,4 +278,23 @@ func (b *Blueprint) InitNodeMap() {
 	for _, node := range b.Nodes {
 		b.nodeMap[node.ID] = node
 	}
+}
+
+// isValidIdentifier 验证标识符是否有效（字母数字下划线，不以数字开头）
+func isValidIdentifier(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for i, c := range s {
+		if i == 0 {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {
+				return false
+			}
+		} else {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+				return false
+			}
+		}
+	}
+	return true
 }

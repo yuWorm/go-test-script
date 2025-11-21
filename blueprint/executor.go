@@ -24,6 +24,11 @@ type ExecutionOptions struct {
 	Timeout        time.Duration // 超时时间，0 表示无超时
 	MaxConcurrency int           // 最大并发数（仅用于并行模式），0 表示无限制
 	StopOnError    bool          // 遇到错误时是否停止执行
+	// 安全限制
+	MaxNodes       int           // 最大节点数，0 表示无限制（默认 1000）
+	MaxDepth       int           // 最大递归深度，0 表示无限制（默认 100）
+	NodeTimeout    time.Duration // 单节点执行超时，0 表示无超时（默认 30s）
+	MaxIterations  int           // 循环最大迭代次数（默认 10000）
 }
 
 // DefaultExecutionOptions 返回默认执行选项
@@ -33,6 +38,10 @@ func DefaultExecutionOptions() *ExecutionOptions {
 		Timeout:        0,
 		MaxConcurrency: 0,
 		StopOnError:    true,
+		MaxNodes:       1000,
+		MaxDepth:       100,
+		NodeTimeout:    30 * time.Second,
+		MaxIterations:  10000,
 	}
 }
 
@@ -57,6 +66,11 @@ func (e *Executor) Execute(bp *Blueprint, inputs map[string]interface{}) (*Execu
 	// 检查蓝图是否已编译
 	if !bp.IsCompiled() {
 		return nil, fmt.Errorf("blueprint is not compiled, please compile it first")
+	}
+
+	// 安全检查：最大节点数
+	if e.options.MaxNodes > 0 && len(bp.Nodes) > e.options.MaxNodes {
+		return nil, fmt.Errorf("blueprint has %d nodes, exceeds maximum allowed %d", len(bp.Nodes), e.options.MaxNodes)
 	}
 
 	// 创建执行上下文
@@ -399,7 +413,7 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 
 	// 3. 从Start节点开始递归执行
 	executed := &sync.Map{}
-	return e.executeNodeRecursive(ctx, bp, startNode, flowInfo, executed)
+	return e.executeNodeRecursive(ctx, bp, startNode, flowInfo, executed, 0)
 }
 
 // flowInfo 执行流信息
@@ -479,7 +493,12 @@ func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
 }
 
 // executeNodeRecursive 递归执行节点
-func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map) error {
+func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, depth int) error {
+	// 检查递归深度
+	if e.options.MaxDepth > 0 && depth > e.options.MaxDepth {
+		return fmt.Errorf("execution depth %d exceeds maximum allowed %d", depth, e.options.MaxDepth)
+	}
+
 	// 检查是否已执行
 	if _, loaded := executed.LoadOrStore(node.ID, true); loaded {
 		return nil
@@ -493,8 +512,8 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 	// 先执行纯数据节点依赖（无执行引脚的节点）
 	e.executeDataDependencies(ctx, bp, node, info, executed)
 
-	// 执行当前节点
-	if err := e.executeNode(ctx, bp, node); err != nil {
+	// 执行当前节点（带超时）
+	if err := e.executeNodeWithTimeout(ctx, bp, node); err != nil {
 		ctx.AddError(fmt.Errorf("node %s execution failed: %w", node.ID, err))
 		if e.options.StopOnError {
 			return err
@@ -504,6 +523,11 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 	// End节点：执行完成即结束，不继续传播
 	if node.Type == NodeTypeEnd {
 		return nil
+	}
+
+	// ForLoop 节点特殊处理：真正执行循环
+	if node.Type == NodeTypeFlowControl && node.Operation == "for_loop" {
+		return e.executeForLoop(ctx, bp, node, info, executed, depth)
 	}
 
 	// 判断是否是序列节点（并行执行）
@@ -532,7 +556,7 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 			wg.Add(1)
 			go func(n *Node) {
 				defer wg.Done()
-				if err := e.executeNodeRecursive(ctx, bp, n, info, executed); err != nil {
+				if err := e.executeNodeRecursive(ctx, bp, n, info, executed, depth+1); err != nil {
 					errChan <- err
 				}
 			}(nextNode)
@@ -550,13 +574,171 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 	} else {
 		// 顺序执行
 		for _, nextNode := range nextNodes {
-			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed); err != nil {
+			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed, depth+1); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
+}
+
+// executeForLoop 执行 ForLoop 节点的真正循环
+func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, depth int) error {
+	// 获取循环参数
+	start := 0.0
+	end := 10.0
+	step := 1.0
+
+	if v, ok := node.GetOutputValue("start"); ok {
+		if f, ok := v.(float64); ok {
+			start = f
+		}
+	} else {
+		for _, pin := range node.InputPins {
+			if pin.Name == "start" && pin.Value != nil {
+				if f, ok := pin.Value.(float64); ok {
+					start = f
+				}
+			}
+		}
+	}
+
+	if v, ok := node.GetOutputValue("end"); ok {
+		if f, ok := v.(float64); ok {
+			end = f
+		}
+	} else {
+		for _, pin := range node.InputPins {
+			if pin.Name == "end" && pin.Value != nil {
+				if f, ok := pin.Value.(float64); ok {
+					end = f
+				}
+			}
+		}
+	}
+
+	if v, ok := node.GetOutputValue("step"); ok {
+		if f, ok := v.(float64); ok {
+			step = f
+		}
+	} else {
+		for _, pin := range node.InputPins {
+			if pin.Name == "step" && pin.Value != nil {
+				if f, ok := pin.Value.(float64); ok {
+					step = f
+				}
+			}
+		}
+	}
+
+	if step == 0 {
+		return fmt.Errorf("for_loop step cannot be zero")
+	}
+
+	// 获取 loop_body 连接的节点
+	var loopBodyNodes []*Node
+	var completedNodes []*Node
+
+	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+		for pinName, targets := range execOutputs {
+			for _, target := range targets {
+				if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+					if pinName == "loop_body" {
+						loopBodyNodes = append(loopBodyNodes, targetNode)
+					} else if pinName == "completed" {
+						completedNodes = append(completedNodes, targetNode)
+					}
+				}
+			}
+		}
+	}
+
+	// 执行循环
+	maxIterations := e.options.MaxIterations
+	if maxIterations <= 0 {
+		maxIterations = 10000
+	}
+
+	count := 0
+	if step > 0 {
+		for i := start; i < end; i += step {
+			if ctx.IsCancelled() {
+				return fmt.Errorf("execution cancelled")
+			}
+			if count >= maxIterations {
+				return fmt.Errorf("for_loop exceeded maximum iterations (%d)", maxIterations)
+			}
+
+			// 设置当前索引输出
+			node.SetOutputValue("index", i)
+			node.SetOutputValue("count", float64(count))
+
+			// 执行 loop_body 分支（需要重置已执行状态以允许重复执行）
+			loopExecuted := &sync.Map{}
+			for _, bodyNode := range loopBodyNodes {
+				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, depth+1); err != nil {
+					return err
+				}
+			}
+
+			count++
+		}
+	} else {
+		for i := start; i > end; i += step {
+			if ctx.IsCancelled() {
+				return fmt.Errorf("execution cancelled")
+			}
+			if count >= maxIterations {
+				return fmt.Errorf("for_loop exceeded maximum iterations (%d)", maxIterations)
+			}
+
+			node.SetOutputValue("index", i)
+			node.SetOutputValue("count", float64(count))
+
+			loopExecuted := &sync.Map{}
+			for _, bodyNode := range loopBodyNodes {
+				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, depth+1); err != nil {
+					return err
+				}
+			}
+
+			count++
+		}
+	}
+
+	// 设置最终输出
+	node.SetOutputValue("count", float64(count))
+
+	// 执行 completed 分支
+	for _, completedNode := range completedNodes {
+		if err := e.executeNodeRecursive(ctx, bp, completedNode, info, executed, depth+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// executeNodeWithTimeout 带超时的节点执行
+func (e *Executor) executeNodeWithTimeout(ctx *ExecutionContext, bp *Blueprint, node *Node) error {
+	if e.options.NodeTimeout <= 0 {
+		return e.executeNode(ctx, bp, node)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- e.executeNode(ctx, bp, node)
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(e.options.NodeTimeout):
+		return fmt.Errorf("node %s execution timeout after %v", node.ID, e.options.NodeTimeout)
+	case <-ctx.Context().Done():
+		return fmt.Errorf("execution cancelled")
+	}
 }
 
 // executeDataDependencies 执行纯数据节点依赖
