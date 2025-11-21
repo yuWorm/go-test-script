@@ -9,12 +9,17 @@ import (
 type NodeType string
 
 const (
-	NodeTypeStart      NodeType = "start"
-	NodeTypeEnd        NodeType = "end"
-	NodeTypeArithmetic NodeType = "arithmetic"
-	NodeTypeLogic      NodeType = "logic"
-	NodeTypeCondition  NodeType = "condition"
-	NodeTypeFunction   NodeType = "function"
+	NodeTypeStart       NodeType = "start"
+	NodeTypeEnd         NodeType = "end"
+	NodeTypeArithmetic  NodeType = "arithmetic"
+	NodeTypeLogic       NodeType = "logic"
+	NodeTypeCondition   NodeType = "condition"  // 废弃，使用 flow_control
+	NodeTypeFunction    NodeType = "function"   // 废弃，使用更具体的类型
+	NodeTypeFlowControl NodeType = "flow_control" // 控制流节点（branch, for_loop, while_loop）
+	NodeTypeData        NodeType = "data"         // 纯数据节点（constant, get_variable）
+	NodeTypeVariable    NodeType = "variable"     // 变量操作节点（set_variable）
+	NodeTypeDebug       NodeType = "debug"        // 调试节点（print）
+	NodeTypeAsync       NodeType = "async"        // 异步节点（delay）
 )
 
 // PinKind 定义引脚类型

@@ -2,9 +2,14 @@ import type { NodeTemplate } from '../types/blueprint'
 
 /**
  * 所有可用的节点模板
+ *
+ * 引脚设计原则：
+ * 1. 可执行节点：有 exec_in 和 exec_out（或自定义执行输出引脚）
+ * 2. 纯数据节点：没有执行引脚，只有数据引脚（如常量、获取变量）
+ * 3. 控制流节点：有自定义执行输出引脚（如 true_exec, false_exec, loop_body）
  */
 export const nodeTemplates: NodeTemplate[] = [
-  // 算术运算节点
+  // ==================== 算术运算节点（可执行） ====================
   {
     type: 'arithmetic',
     operation: 'add',
@@ -15,8 +20,8 @@ export const nodeTemplates: NodeTemplate[] = [
     color: '#4CAF50',
     inputPins: [
       { name: 'exec_in', kind: 'exec', type: 'exec' },
-      { name: 'a', kind: 'data', type: 'float' },
-      { name: 'b', kind: 'data', type: 'float' }
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
       { name: 'exec_out', kind: 'exec', type: 'exec' },
@@ -32,11 +37,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '-',
     color: '#4CAF50',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
-      { name: 'result', type: 'float' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'float' }
     ]
   },
   {
@@ -48,11 +55,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '×',
     color: '#4CAF50',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
-      { name: 'result', type: 'float' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'float' }
     ]
   },
   {
@@ -64,11 +73,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '÷',
     color: '#4CAF50',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 1 }
     ],
     outputPins: [
-      { name: 'result', type: 'float' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'float' }
     ]
   },
   {
@@ -80,15 +91,17 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '^',
     color: '#4CAF50',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 1 }
     ],
     outputPins: [
-      { name: 'result', type: 'float' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'float' }
     ]
   },
 
-  // 比较运算节点
+  // ==================== 比较运算节点（可执行） ====================
   {
     type: 'arithmetic',
     operation: 'greater',
@@ -98,11 +111,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '>',
     color: '#FF9800',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
   {
@@ -114,11 +129,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '<',
     color: '#FF9800',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
   {
@@ -130,15 +147,71 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '=',
     color: '#FF9800',
     inputPins: [
-      { name: 'a', type: 'float' },
-      { name: 'b', type: 'float' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'arithmetic',
+    operation: 'not_equal',
+    label: '不等于',
+    description: '比较 a 是否不等于 b',
+    category: '比较运算',
+    icon: '≠',
+    color: '#FF9800',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'arithmetic',
+    operation: 'greater_equal',
+    label: '大于等于',
+    description: '比较 a 是否大于等于 b',
+    category: '比较运算',
+    icon: '≥',
+    color: '#FF9800',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'arithmetic',
+    operation: 'less_equal',
+    label: '小于等于',
+    description: '比较 a 是否小于等于 b',
+    category: '比较运算',
+    icon: '≤',
+    color: '#FF9800',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
 
-  // 逻辑运算节点
+  // ==================== 逻辑运算节点（可执行） ====================
   {
     type: 'logic',
     operation: 'and',
@@ -148,11 +221,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '&&',
     color: '#2196F3',
     inputPins: [
-      { name: 'a', type: 'bool' },
-      { name: 'b', type: 'bool' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'bool', value: false },
+      { name: 'b', kind: 'data', type: 'bool', value: false }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
   {
@@ -164,11 +239,13 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '||',
     color: '#2196F3',
     inputPins: [
-      { name: 'a', type: 'bool' },
-      { name: 'b', type: 'bool' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'bool', value: false },
+      { name: 'b', kind: 'data', type: 'bool', value: false }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
   {
@@ -180,258 +257,42 @@ export const nodeTemplates: NodeTemplate[] = [
     icon: '!',
     color: '#2196F3',
     inputPins: [
-      { name: 'a', type: 'bool' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'bool', value: false }
     ],
     outputPins: [
-      { name: 'result', type: 'bool' }
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'logic',
+    operation: 'xor',
+    label: '异或',
+    description: 'a XOR b',
+    category: '逻辑运算',
+    icon: '⊕',
+    color: '#2196F3',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'bool', value: false },
+      { name: 'b', kind: 'data', type: 'bool', value: false }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'bool' }
     ]
   },
 
-  // 控制流节点
+  // ==================== 控制流节点（自定义执行引脚） ====================
   {
-    type: 'condition',
-    label: '条件分支',
-    description: '根据条件选择不同的值',
-    category: '控制流',
-    icon: '?',
-    color: '#9C27B0',
-    inputPins: [
-      { name: 'condition', type: 'bool' },
-      { name: 'true_value', type: 'any' },
-      { name: 'false_value', type: 'any' }
-    ],
-    outputPins: [
-      { name: 'result', type: 'any' },
-      { name: 'is_true', type: 'bool' },
-      { name: 'is_false', type: 'bool' }
-    ]
-  },
-  {
-    type: 'condition',
-    operation: 'if_else',
-    label: 'If/Else',
-    description: 'If 条件判断，执行不同分支',
-    category: '控制流',
-    icon: 'IF',
-    color: '#9C27B0',
-    inputPins: [
-      { name: 'condition', type: 'bool' },
-      { name: 'then_value', type: 'any' },
-      { name: 'else_value', type: 'any' }
-    ],
-    outputPins: [
-      { name: 'result', type: 'any' },
-      { name: 'then_exec', type: 'bool' },
-      { name: 'else_exec', type: 'bool' }
-    ]
-  },
-  {
-    type: 'condition',
-    operation: 'for_loop',
-    label: 'For 循环',
-    description: '从 start 到 end 循环，步长为 step',
-    category: '控制流',
-    icon: 'FOR',
-    color: '#9C27B0',
-    inputPins: [
-      { name: 'start', type: 'float', value: 0 },
-      { name: 'end', type: 'float', value: 10 },
-      { name: 'step', type: 'float', value: 1 }
-    ],
-    outputPins: [
-      { name: 'index', type: 'float' },
-      { name: 'count', type: 'float' },
-      { name: 'completed', type: 'bool' }
-    ]
-  },
-  {
-    type: 'condition',
-    operation: 'while_loop',
-    label: 'While 循环',
-    description: '当条件为真时循环执行',
-    category: '控制流',
-    icon: 'WHILE',
-    color: '#9C27B0',
-    inputPins: [
-      { name: 'condition', type: 'bool', value: true }
-    ],
-    outputPins: [
-      { name: 'iterations', type: 'float' },
-      { name: 'completed', type: 'bool' }
-    ]
-  },
-  {
-    type: 'condition',
-    operation: 'break',
-    label: 'Break',
-    description: '跳出循环',
-    category: '控制流',
-    icon: '⊗',
-    color: '#E91E63',
-    inputPins: [],
-    outputPins: [
-      { name: 'break', type: 'bool' }
-    ]
-  },
-  {
-    type: 'condition',
-    operation: 'continue',
-    label: 'Continue',
-    description: '继续下一次循环',
-    category: '控制流',
-    icon: '↻',
-    color: '#E91E63',
-    inputPins: [],
-    outputPins: [
-      { name: 'continue', type: 'bool' }
-    ]
-  },
-
-  // 函数节点
-  {
-    type: 'function',
-    operation: 'constant',
-    label: '常量',
-    description: '输出一个常量值',
-    category: '函数',
-    icon: '123',
-    color: '#607D8B',
-    inputPins: [
-      { name: 'value', type: 'any', value: 0 }
-    ],
-    outputPins: [
-      { name: 'output', type: 'any' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'get_variable',
-    label: '获取变量',
-    description: '从上下文获取变量值',
-    category: '函数',
-    icon: 'VAR',
-    color: '#607D8B',
-    inputPins: [
-      { name: 'name', type: 'string' }
-    ],
-    outputPins: [
-      { name: 'value', type: 'any' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'set_variable',
-    label: '设置变量',
-    description: '设置变量到上下文',
-    category: '函数',
-    icon: 'SET',
-    color: '#607D8B',
-    inputPins: [
-      { name: 'name', type: 'string' },
-      { name: 'value', type: 'any' }
-    ],
-    outputPins: [
-      { name: 'value', type: 'any' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'sleep',
-    label: '休眠',
-    description: '休眠指定毫秒数（模拟耗时操作）',
-    category: '函数',
-    icon: '💤',
-    color: '#607D8B',
-    inputPins: [
-      { name: 'duration', type: 'float', value: 1000 }
-    ],
-    outputPins: [
-      { name: 'duration', type: 'float' },
-      { name: 'done', type: 'bool' }
-    ]
-  },
-
-  // 异步执行节点
-  {
-    type: 'function',
-    operation: 'async_start',
-    label: '异步开始',
-    description: '创建异步任务，后续节点异步执行',
-    category: '异步',
-    icon: '🚀',
-    color: '#00BCD4',
-    inputPins: [
-      { name: 'task_id', type: 'string', value: '' }
-    ],
-    outputPins: [
-      { name: 'task_id', type: 'string' },
-      { name: 'started', type: 'bool' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'async_end',
-    label: '异步结束',
-    description: '结束异步任务，返回结果',
-    category: '异步',
-    icon: '🏁',
-    color: '#00BCD4',
-    inputPins: [
-      { name: 'task_id', type: 'string' },
-      { name: 'result', type: 'any' }
-    ],
-    outputPins: [
-      { name: 'task_id', type: 'string' },
-      { name: 'completed', type: 'bool' },
-      { name: 'result', type: 'any' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'await',
-    label: '等待结果',
-    description: '等待异步任务完成并获取结果',
-    category: '异步',
-    icon: '⏳',
-    color: '#00BCD4',
-    inputPins: [
-      { name: 'task_id', type: 'string' },
-      { name: 'timeout', type: 'float', value: 30 }
-    ],
-    outputPins: [
-      { name: 'result', type: 'any' },
-      { name: 'completed', type: 'bool' }
-    ]
-  },
-  {
-    type: 'function',
-    operation: 'parallel',
-    label: '并行等待',
-    description: '等待多个异步任务完成',
-    category: '异步',
-    icon: '⚡',
-    color: '#00BCD4',
-    inputPins: [
-      { name: 'task_id_1', type: 'string' },
-      { name: 'task_id_2', type: 'string' }
-    ],
-    outputPins: [
-      { name: 'result_0', type: 'any' },
-      { name: 'result_1', type: 'any' },
-      { name: 'count', type: 'float' },
-      { name: 'all_completed', type: 'bool' }
-    ]
-  },
-
-  // 执行流控制节点
-  {
-    type: 'function',
+    type: 'flow_control',
     operation: 'branch',
     label: '分支',
-    description: '根据条件选择执行分支',
-    category: '执行流',
+    description: '根据条件选择执行分支（true/false）',
+    category: '控制流',
     icon: '◆',
-    color: '#FF5722',
+    color: '#9C27B0',
     inputPins: [
       { name: 'exec_in', kind: 'exec', type: 'exec' },
       { name: 'condition', kind: 'data', type: 'bool', value: true }
@@ -441,12 +302,165 @@ export const nodeTemplates: NodeTemplate[] = [
       { name: 'false_exec', kind: 'exec', type: 'exec' }
     ]
   },
+  {
+    type: 'flow_control',
+    operation: 'for_loop',
+    label: 'For 循环',
+    description: '从 start 到 end 循环执行',
+    category: '控制流',
+    icon: 'FOR',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'start', kind: 'data', type: 'float', value: 0 },
+      { name: 'end', kind: 'data', type: 'float', value: 10 },
+      { name: 'step', kind: 'data', type: 'float', value: 1 }
+    ],
+    outputPins: [
+      { name: 'loop_body', kind: 'exec', type: 'exec' },
+      { name: 'completed', kind: 'exec', type: 'exec' },
+      { name: 'index', kind: 'data', type: 'float' },
+      { name: 'count', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'flow_control',
+    operation: 'while_loop',
+    label: 'While 循环',
+    description: '当条件为真时循环执行',
+    category: '控制流',
+    icon: 'WHILE',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'condition', kind: 'data', type: 'bool', value: true }
+    ],
+    outputPins: [
+      { name: 'loop_body', kind: 'exec', type: 'exec' },
+      { name: 'completed', kind: 'exec', type: 'exec' },
+      { name: 'iterations', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'flow_control',
+    operation: 'sequence',
+    label: '序列',
+    description: '按顺序执行多个分支',
+    category: '控制流',
+    icon: '→',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' }
+    ],
+    outputPins: [
+      { name: 'then_0', kind: 'exec', type: 'exec' },
+      { name: 'then_1', kind: 'exec', type: 'exec' },
+      { name: 'then_2', kind: 'exec', type: 'exec' }
+    ]
+  },
 
-  // 特殊节点
+  // ==================== 纯数据节点（无执行引脚） ====================
+  {
+    type: 'data',
+    operation: 'constant',
+    label: '常量',
+    description: '输出一个常量值（纯数据节点）',
+    category: '数据',
+    icon: '123',
+    color: '#607D8B',
+    inputPins: [
+      { name: 'value', kind: 'data', type: 'any', value: 0 }
+    ],
+    outputPins: [
+      { name: 'output', kind: 'data', type: 'any' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'get_variable',
+    label: '获取变量',
+    description: '获取变量值（纯数据节点）',
+    category: '数据',
+    icon: 'GET',
+    color: '#607D8B',
+    inputPins: [
+      { name: 'name', kind: 'data', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'value', kind: 'data', type: 'any' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'make_float',
+    label: '浮点数',
+    description: '创建浮点数（纯数据节点）',
+    category: '数据',
+    icon: '1.0',
+    color: '#4CAF50',
+    inputPins: [
+      { name: 'value', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'output', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'make_bool',
+    label: '布尔值',
+    description: '创建布尔值（纯数据节点）',
+    category: '数据',
+    icon: 'T/F',
+    color: '#F44336',
+    inputPins: [
+      { name: 'value', kind: 'data', type: 'bool', value: false }
+    ],
+    outputPins: [
+      { name: 'output', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'make_string',
+    label: '字符串',
+    description: '创建字符串（纯数据节点）',
+    category: '数据',
+    icon: 'ABC',
+    color: '#E91E63',
+    inputPins: [
+      { name: 'value', kind: 'data', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'output', kind: 'data', type: 'string' }
+    ]
+  },
+
+  // ==================== 变量操作节点（可执行） ====================
+  {
+    type: 'variable',
+    operation: 'set_variable',
+    label: '设置变量',
+    description: '设置变量值（可执行节点）',
+    category: '变量',
+    icon: 'SET',
+    color: '#795548',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'name', kind: 'data', type: 'string', value: '' },
+      { name: 'value', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'value', kind: 'data', type: 'any' }
+    ]
+  },
+
+  // ==================== 特殊节点 ====================
   {
     type: 'start',
     label: '开始',
-    description: '蓝图开始节点（可添加输出引脚作为蓝图输入）',
+    description: '蓝图开始节点',
     category: '特殊',
     icon: '▶',
     color: '#8BC34A',
@@ -458,14 +472,53 @@ export const nodeTemplates: NodeTemplate[] = [
   {
     type: 'end',
     label: '结束',
-    description: '蓝图结束节点（可添加输入引脚作为蓝图输出）',
+    description: '蓝图结束节点',
     category: '特殊',
     icon: '■',
     color: '#F44336',
     inputPins: [
-      { name: 'exec_in', kind: 'exec', type: 'exec' }
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'result', kind: 'data', type: 'any' }
     ],
     outputPins: []
+  },
+
+  // ==================== 输出/调试节点（可执行） ====================
+  {
+    type: 'debug',
+    operation: 'print',
+    label: '打印',
+    description: '打印值到控制台',
+    category: '调试',
+    icon: '📝',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'value', kind: 'data', type: 'any' },
+      { name: 'label', kind: 'data', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' }
+    ]
+  },
+
+  // ==================== 延时/异步节点（可执行） ====================
+  {
+    type: 'async',
+    operation: 'delay',
+    label: '延时',
+    description: '延时指定毫秒后继续执行',
+    category: '异步',
+    icon: '⏱',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'duration', kind: 'data', type: 'float', value: 1000 }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'duration', kind: 'data', type: 'float' }
+    ]
   }
 ]
 
