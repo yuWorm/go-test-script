@@ -1,0 +1,69 @@
+{
+  "id": "for_loop_demo",
+  "name": "For 循环",
+  "description": "演示 ForLoop 节点的 loop_body/completed 执行引脚",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 100, "y": 200}
+    },
+    {
+      "id": "for_loop",
+      "type": "flow_control",
+      "operation": "for_loop",
+      "label": "For 循环",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "start", "kind": "data", "type": "float", "value": 0},
+        {"name": "end", "kind": "data", "type": "float", "value": 5},
+        {"name": "step", "kind": "data", "type": "float", "value": 1}
+      ],
+      "output_pins": [
+        {"name": "loop_body", "kind": "exec", "type": "exec"},
+        {"name": "completed", "kind": "exec", "type": "exec"},
+        {"name": "index", "kind": "data", "type": "float"},
+        {"name": "count", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 350, "y": 200}
+    },
+    {
+      "id": "print_index",
+      "type": "debug",
+      "operation": "print",
+      "label": "打印索引",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"},
+        {"name": "label", "kind": "data", "type": "string", "value": "Index"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 600, "y": 100}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "any"}
+      ],
+      "output_pins": [],
+      "position": {"x": 600, "y": 300}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "exec", "target_node": "for_loop", "target_pin": "exec_in"},
+    {"id": "c2", "source_node": "for_loop", "source_pin": "loop_body", "target_node": "print_index", "target_pin": "exec_in"},
+    {"id": "c3", "source_node": "for_loop", "source_pin": "index", "target_node": "print_index", "target_pin": "value"},
+    {"id": "c4", "source_node": "for_loop", "source_pin": "completed", "target_node": "end", "target_pin": "exec_in"},
+    {"id": "c5", "source_node": "for_loop", "source_pin": "count", "target_node": "end", "target_pin": "result"}
+  ]
+}

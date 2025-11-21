@@ -1,0 +1,77 @@
+{
+  "id": "simple_add",
+  "name": "简单加法",
+  "description": "演示执行流：Start -> Add -> End",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 100, "y": 200}
+    },
+    {
+      "id": "const_a",
+      "type": "data",
+      "operation": "constant",
+      "label": "常量 A",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 10}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 100, "y": 50}
+    },
+    {
+      "id": "const_b",
+      "type": "data",
+      "operation": "constant",
+      "label": "常量 B",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 20}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 100, "y": 350}
+    },
+    {
+      "id": "add",
+      "type": "arithmetic",
+      "operation": "add",
+      "label": "加法",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 350, "y": 200}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "any"}
+      ],
+      "output_pins": [],
+      "position": {"x": 600, "y": 200}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "exec", "target_node": "add", "target_pin": "exec_in"},
+    {"id": "c2", "source_node": "const_a", "source_pin": "output", "target_node": "add", "target_pin": "a"},
+    {"id": "c3", "source_node": "const_b", "source_pin": "output", "target_node": "add", "target_pin": "b"},
+    {"id": "c4", "source_node": "add", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"},
+    {"id": "c5", "source_node": "add", "source_pin": "result", "target_node": "end", "target_pin": "result"}
+  ]
+}

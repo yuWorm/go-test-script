@@ -1,0 +1,141 @@
+{
+  "id": "calculator",
+  "name": "计算器",
+  "description": "演示链式计算: (a + b) * c > threshold",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 100, "y": 250}
+    },
+    {
+      "id": "a",
+      "type": "data",
+      "operation": "make_float",
+      "label": "A = 10",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 10}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 100, "y": 50}
+    },
+    {
+      "id": "b",
+      "type": "data",
+      "operation": "make_float",
+      "label": "B = 5",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 5}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 100, "y": 150}
+    },
+    {
+      "id": "c",
+      "type": "data",
+      "operation": "make_float",
+      "label": "C = 3",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 3}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 300, "y": 50}
+    },
+    {
+      "id": "threshold",
+      "type": "data",
+      "operation": "make_float",
+      "label": "阈值 = 40",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 40}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 500, "y": 50}
+    },
+    {
+      "id": "add",
+      "type": "arithmetic",
+      "operation": "add",
+      "label": "A + B",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 300, "y": 250}
+    },
+    {
+      "id": "multiply",
+      "type": "arithmetic",
+      "operation": "multiply",
+      "label": "(A+B) * C",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 500, "y": 250}
+    },
+    {
+      "id": "compare",
+      "type": "arithmetic",
+      "operation": "greater",
+      "label": "结果 > 阈值?",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "a", "kind": "data", "type": "float"},
+        {"name": "b", "kind": "data", "type": "float"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 700, "y": 250}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "result", "kind": "data", "type": "any"}
+      ],
+      "output_pins": [],
+      "position": {"x": 900, "y": 250}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "exec", "target_node": "add", "target_pin": "exec_in"},
+    {"id": "c2", "source_node": "a", "source_pin": "output", "target_node": "add", "target_pin": "a"},
+    {"id": "c3", "source_node": "b", "source_pin": "output", "target_node": "add", "target_pin": "b"},
+    {"id": "c4", "source_node": "add", "source_pin": "exec_out", "target_node": "multiply", "target_pin": "exec_in"},
+    {"id": "c5", "source_node": "add", "source_pin": "result", "target_node": "multiply", "target_pin": "a"},
+    {"id": "c6", "source_node": "c", "source_pin": "output", "target_node": "multiply", "target_pin": "b"},
+    {"id": "c7", "source_node": "multiply", "source_pin": "exec_out", "target_node": "compare", "target_pin": "exec_in"},
+    {"id": "c8", "source_node": "multiply", "source_pin": "result", "target_node": "compare", "target_pin": "a"},
+    {"id": "c9", "source_node": "threshold", "source_pin": "output", "target_node": "compare", "target_pin": "b"},
+    {"id": "c10", "source_node": "compare", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"},
+    {"id": "c11", "source_node": "compare", "source_pin": "result", "target_node": "end", "target_pin": "result"}
+  ]
+}

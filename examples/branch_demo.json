@@ -1,0 +1,123 @@
+{
+  "id": "branch_demo",
+  "name": "分支控制流",
+  "description": "演示 Branch 节点的 true_exec/false_exec 执行引脚",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 100, "y": 200}
+    },
+    {
+      "id": "condition",
+      "type": "data",
+      "operation": "make_bool",
+      "label": "条件",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "bool", "value": true}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "bool"}
+      ],
+      "position": {"x": 100, "y": 50}
+    },
+    {
+      "id": "branch",
+      "type": "flow_control",
+      "operation": "branch",
+      "label": "分支",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "condition", "kind": "data", "type": "bool"}
+      ],
+      "output_pins": [
+        {"name": "true_exec", "kind": "exec", "type": "exec"},
+        {"name": "false_exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 350, "y": 200}
+    },
+    {
+      "id": "true_value",
+      "type": "data",
+      "operation": "constant",
+      "label": "True 值",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 100}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 450, "y": 50}
+    },
+    {
+      "id": "false_value",
+      "type": "data",
+      "operation": "constant",
+      "label": "False 值",
+      "input_pins": [
+        {"name": "value", "kind": "data", "type": "float", "value": 0}
+      ],
+      "output_pins": [
+        {"name": "output", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 450, "y": 350}
+    },
+    {
+      "id": "set_true",
+      "type": "variable",
+      "operation": "set_variable",
+      "label": "设置结果 (True)",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "name", "kind": "data", "type": "string", "value": "result"},
+        {"name": "value", "kind": "data", "type": "any"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"}
+      ],
+      "position": {"x": 600, "y": 100}
+    },
+    {
+      "id": "set_false",
+      "type": "variable",
+      "operation": "set_variable",
+      "label": "设置结果 (False)",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "name", "kind": "data", "type": "string", "value": "result"},
+        {"name": "value", "kind": "data", "type": "any"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"}
+      ],
+      "position": {"x": 600, "y": 300}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"}
+      ],
+      "output_pins": [],
+      "position": {"x": 850, "y": 200}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "exec", "target_node": "branch", "target_pin": "exec_in"},
+    {"id": "c2", "source_node": "condition", "source_pin": "output", "target_node": "branch", "target_pin": "condition"},
+    {"id": "c3", "source_node": "branch", "source_pin": "true_exec", "target_node": "set_true", "target_pin": "exec_in"},
+    {"id": "c4", "source_node": "branch", "source_pin": "false_exec", "target_node": "set_false", "target_pin": "exec_in"},
+    {"id": "c5", "source_node": "true_value", "source_pin": "output", "target_node": "set_true", "target_pin": "value"},
+    {"id": "c6", "source_node": "false_value", "source_pin": "output", "target_node": "set_false", "target_pin": "value"},
+    {"id": "c7", "source_node": "set_true", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"},
+    {"id": "c8", "source_node": "set_false", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"}
+  ]
+}
