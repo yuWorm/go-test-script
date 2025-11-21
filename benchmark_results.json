@@ -3,112 +3,112 @@
     "language": "Go",
     "n": 10,
     "result": 55,
-    "time_ms": 0.000308,
+    "time_ms": 0.000178,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 10,
     "result": 55,
-    "time_ms": 0.314539,
+    "time_ms": 0.374663,
     "memory_kb": 6
   },
   {
     "language": "Python",
     "n": 10,
     "result": 55,
-    "time_ms": 0.011659999927360332,
+    "time_ms": 0.026243999968755816,
     "memory_kb": 0
   },
   {
     "language": "Blueprint",
     "n": 10,
-    "result": 0,
-    "time_ms": 0.069803,
-    "memory_kb": 33
+    "result": 55,
+    "time_ms": 1.030214,
+    "memory_kb": 177
   },
   {
     "language": "Go",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.000279,
+    "time_ms": 0.000168,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.324571,
+    "time_ms": 0.359718,
     "memory_kb": 8
   },
   {
     "language": "Python",
     "n": 20,
     "result": 6765,
-    "time_ms": 0.025431000040043727,
+    "time_ms": 0.015823000012460398,
     "memory_kb": 0
   },
   {
     "language": "Blueprint",
     "n": 20,
-    "result": 0,
-    "time_ms": 0.049674,
-    "memory_kb": 34
+    "result": 6765,
+    "time_ms": 1.304097,
+    "memory_kb": 289
   },
   {
     "language": "Go",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.000477,
+    "time_ms": 0.000234,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.34296,
+    "time_ms": 0.285285,
     "memory_kb": 10
   },
   {
     "language": "Python",
     "n": 30,
     "result": 832040,
-    "time_ms": 0.017149000086646993,
+    "time_ms": 0.01906800002871023,
     "memory_kb": 0
   },
   {
     "language": "Blueprint",
     "n": 30,
-    "result": 0,
-    "time_ms": 0.056372,
-    "memory_kb": 33
+    "result": 832040,
+    "time_ms": 2.419711,
+    "memory_kb": 403
   },
   {
     "language": "Go",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.000375,
+    "time_ms": 0.000122,
     "memory_kb": 0
   },
   {
     "language": "Node.js",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.32683,
+    "time_ms": 0.464553,
     "memory_kb": 13
   },
   {
     "language": "Python",
     "n": 40,
     "result": 102334155,
-    "time_ms": 0.04504599996835168,
+    "time_ms": 0.021235000076558208,
     "memory_kb": 0
   },
   {
     "language": "Blueprint",
     "n": 40,
-    "result": 0,
-    "time_ms": 0.061007,
-    "memory_kb": 33
+    "result": 102334155,
+    "time_ms": 2.477351,
+    "memory_kb": 512
   }
 ]

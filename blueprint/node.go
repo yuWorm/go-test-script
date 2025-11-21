@@ -180,26 +180,28 @@ func (n *Node) Validate() error {
 		return fmt.Errorf("node %s: type cannot be empty", n.ID)
 	}
 
-	// 检查引脚名称唯一性
-	pinNames := make(map[string]bool)
+	// 检查输入引脚名称唯一性
+	inputPinNames := make(map[string]bool)
 	for _, pin := range n.InputPins {
 		if pin.Name == "" {
 			return fmt.Errorf("node %s: input pin name cannot be empty", n.ID)
 		}
-		if pinNames[pin.Name] {
-			return fmt.Errorf("node %s: duplicate pin name %s", n.ID, pin.Name)
+		if inputPinNames[pin.Name] {
+			return fmt.Errorf("node %s: duplicate input pin name %s", n.ID, pin.Name)
 		}
-		pinNames[pin.Name] = true
+		inputPinNames[pin.Name] = true
 	}
 
+	// 检查输出引脚名称唯一性（输入和输出可以有相同名称，如 exec）
+	outputPinNames := make(map[string]bool)
 	for _, pin := range n.OutputPins {
 		if pin.Name == "" {
 			return fmt.Errorf("node %s: output pin name cannot be empty", n.ID)
 		}
-		if pinNames[pin.Name] {
-			return fmt.Errorf("node %s: duplicate pin name %s", n.ID, pin.Name)
+		if outputPinNames[pin.Name] {
+			return fmt.Errorf("node %s: duplicate output pin name %s", n.ID, pin.Name)
 		}
-		pinNames[pin.Name] = true
+		outputPinNames[pin.Name] = true
 	}
 
 	// 如果有执行器，调用其验证方法

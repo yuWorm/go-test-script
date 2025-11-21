@@ -91,6 +91,7 @@ func (c *Compiler) attachExecutors(bp *Blueprint) error {
 
 // topologicalSort 对节点进行拓扑排序
 // 使用 Kahn 算法进行拓扑排序，确保依赖关系正确
+// 注意：只考虑数据流连接，执行流连接允许有循环（如 while 循环）
 func (c *Compiler) topologicalSort(bp *Blueprint) ([]*Node, error) {
 	// 构建入度表和邻接表
 	inDegree := make(map[string]int)
@@ -101,13 +102,31 @@ func (c *Compiler) topologicalSort(bp *Blueprint) ([]*Node, error) {
 		inDegree[node.ID] = 0
 	}
 
-	// 根据连接计算入度和构建邻接表
+	// 根据数据流连接计算入度和构建邻接表（跳过执行流连接）
 	for _, conn := range bp.Connections {
+		sourceNode := bp.nodeMap[conn.SourceNode]
+		if sourceNode == nil {
+			continue
+		}
+
+		// 检查是否为执行流连接
+		isExecFlow := false
+		for _, pin := range sourceNode.OutputPins {
+			if pin.Name == conn.SourcePin && pin.Kind == PinKindExecution {
+				isExecFlow = true
+				break
+			}
+		}
+
+		// 跳过执行流连接（允许循环）
+		if isExecFlow {
+			continue
+		}
+
 		// 增加目标节点的入度
 		inDegree[conn.TargetNode]++
 
 		// 添加到邻接表
-		sourceNode := bp.nodeMap[conn.SourceNode]
 		targetNode := bp.nodeMap[conn.TargetNode]
 		adjacency[sourceNode.ID] = append(adjacency[sourceNode.ID], targetNode)
 	}

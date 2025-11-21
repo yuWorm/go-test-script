@@ -177,6 +177,7 @@ func benchmarkBlueprint(n int) BenchmarkResult {
 		return BenchmarkResult{Language: "Blueprint", N: n, TimeMs: -1}
 	}
 
+
 	// 执行
 	executor := blueprint.NewExecutor(nil)
 	start := time.Now()
@@ -381,7 +382,7 @@ func createFibonacciBlueprint(n int) *blueprint.Blueprint {
 	}
 
 	// a + b
-	addNode := &blueprint.Node{
+	mathAddNode := &blueprint.Node{
 		ID:        "add",
 		Type:      blueprint.NodeTypeArithmetic,
 		Operation: "add",
@@ -396,13 +397,30 @@ func createFibonacciBlueprint(n int) *blueprint.Blueprint {
 		},
 	}
 
+	// temp = a + b (先保存和，避免覆盖问题)
+	setTemp := &blueprint.Node{
+		ID:        "set_temp",
+		Type:      blueprint.NodeTypeVariable,
+		Operation: "set_variable",
+		Label:     "temp = a+b",
+		Position:  blueprint.Position{X: 1000, Y: 0},
+		InputPins: []blueprint.Pin{
+			{Name: "exec", Kind: blueprint.PinKindExecution},
+			{Name: "name", Kind: blueprint.PinKindData, Type: "string", Value: "temp"},
+			{Name: "value", Kind: blueprint.PinKindData, Type: "float"},
+		},
+		OutputPins: []blueprint.Pin{
+			{Name: "exec", Kind: blueprint.PinKindExecution},
+		},
+	}
+
 	// a = b
 	setA := &blueprint.Node{
 		ID:        "set_a",
 		Type:      blueprint.NodeTypeVariable,
 		Operation: "set_variable",
 		Label:     "a = b",
-		Position:  blueprint.Position{X: 1000, Y: 0},
+		Position:  blueprint.Position{X: 1100, Y: 0},
 		InputPins: []blueprint.Pin{
 			{Name: "exec", Kind: blueprint.PinKindExecution},
 			{Name: "name", Kind: blueprint.PinKindData, Type: "string", Value: "a"},
@@ -410,6 +428,21 @@ func createFibonacciBlueprint(n int) *blueprint.Blueprint {
 		},
 		OutputPins: []blueprint.Pin{
 			{Name: "exec", Kind: blueprint.PinKindExecution},
+		},
+	}
+
+	// 获取 temp
+	getTemp := &blueprint.Node{
+		ID:        "get_temp",
+		Type:      blueprint.NodeTypeData,
+		Operation: "get_variable",
+		Label:     "获取 temp",
+		Position:  blueprint.Position{X: 1150, Y: 100},
+		InputPins: []blueprint.Pin{
+			{Name: "name", Kind: blueprint.PinKindData, Type: "string", Value: "temp"},
+		},
+		OutputPins: []blueprint.Pin{
+			{Name: "value", Kind: blueprint.PinKindData, Type: "float"},
 		},
 	}
 
@@ -506,46 +539,56 @@ func createFibonacciBlueprint(n int) *blueprint.Blueprint {
 		},
 	}
 
-	// 添加所有节点
-	bp.AddNode(startNode)
-	bp.AddNode(varA)
-	bp.AddNode(varB)
-	bp.AddNode(varI)
-	bp.AddNode(whileNode)
-	bp.AddNode(getI)
-	bp.AddNode(compareNode)
-	bp.AddNode(getA)
-	bp.AddNode(getB)
-	bp.AddNode(addNode)
-	bp.AddNode(setA)
-	bp.AddNode(setB)
-	bp.AddNode(getI2)
-	bp.AddNode(incI)
-	bp.AddNode(setI)
-	bp.AddNode(getFinalB)
-	bp.AddNode(endNode)
+	// 添加所有节点（带错误检查）
+	mustAddNode := func(node *blueprint.Node) {
+		if err := bp.AddNode(node); err != nil {
+			fmt.Printf("AddNode error for %s: %v\n", node.ID, err)
+		}
+	}
+	mustAddNode(startNode)
+	mustAddNode(varA)
+	mustAddNode(varB)
+	mustAddNode(varI)
+	mustAddNode(whileNode)
+	mustAddNode(getI)
+	mustAddNode(compareNode)
+	mustAddNode(getA)
+	mustAddNode(getB)
+	mustAddNode(mathAddNode)
+	mustAddNode(setTemp)
+	mustAddNode(setA)
+	mustAddNode(getTemp)
+	mustAddNode(setB)
+	mustAddNode(getI2)
+	mustAddNode(incI)
+	mustAddNode(setI)
+	mustAddNode(getFinalB)
+	mustAddNode(endNode)
 
 	// 执行流连接
 	bp.AddConnection(blueprint.Connection{ID: "c1", SourceNode: "start", SourcePin: "exec", TargetNode: "var_a", TargetPin: "exec"})
 	bp.AddConnection(blueprint.Connection{ID: "c2", SourceNode: "var_a", SourcePin: "exec", TargetNode: "var_b", TargetPin: "exec"})
 	bp.AddConnection(blueprint.Connection{ID: "c3", SourceNode: "var_b", SourcePin: "exec", TargetNode: "var_i", TargetPin: "exec"})
 	bp.AddConnection(blueprint.Connection{ID: "c4", SourceNode: "var_i", SourcePin: "exec", TargetNode: "while", TargetPin: "exec"})
-	bp.AddConnection(blueprint.Connection{ID: "c5", SourceNode: "while", SourcePin: "loop", TargetNode: "set_a", TargetPin: "exec"})
-	bp.AddConnection(blueprint.Connection{ID: "c6", SourceNode: "set_a", SourcePin: "exec", TargetNode: "set_b", TargetPin: "exec"})
-	bp.AddConnection(blueprint.Connection{ID: "c7", SourceNode: "set_b", SourcePin: "exec", TargetNode: "set_i", TargetPin: "exec"})
-	bp.AddConnection(blueprint.Connection{ID: "c8", SourceNode: "set_i", SourcePin: "exec", TargetNode: "while", TargetPin: "exec"})
-	bp.AddConnection(blueprint.Connection{ID: "c9", SourceNode: "while", SourcePin: "done", TargetNode: "end", TargetPin: "exec"})
+	// 循环体: set_temp -> set_a -> set_b -> set_i -> while
+	bp.AddConnection(blueprint.Connection{ID: "c5", SourceNode: "while", SourcePin: "loop", TargetNode: "set_temp", TargetPin: "exec"})
+	bp.AddConnection(blueprint.Connection{ID: "c6", SourceNode: "set_temp", SourcePin: "exec", TargetNode: "set_a", TargetPin: "exec"})
+	bp.AddConnection(blueprint.Connection{ID: "c7", SourceNode: "set_a", SourcePin: "exec", TargetNode: "set_b", TargetPin: "exec"})
+	bp.AddConnection(blueprint.Connection{ID: "c8", SourceNode: "set_b", SourcePin: "exec", TargetNode: "set_i", TargetPin: "exec"})
+	// Note: 不需要连接 set_i -> while，while loop 内部自动循环
+	bp.AddConnection(blueprint.Connection{ID: "c10", SourceNode: "while", SourcePin: "done", TargetNode: "end", TargetPin: "exec"})
 
 	// 数据流连接
 	bp.AddConnection(blueprint.Connection{ID: "d1", SourceNode: "get_i", SourcePin: "value", TargetNode: "compare", TargetPin: "a"})
 	bp.AddConnection(blueprint.Connection{ID: "d2", SourceNode: "compare", SourcePin: "result", TargetNode: "while", TargetPin: "condition"})
 	bp.AddConnection(blueprint.Connection{ID: "d3", SourceNode: "get_a", SourcePin: "value", TargetNode: "add", TargetPin: "a"})
 	bp.AddConnection(blueprint.Connection{ID: "d4", SourceNode: "get_b", SourcePin: "value", TargetNode: "add", TargetPin: "b"})
-	bp.AddConnection(blueprint.Connection{ID: "d5", SourceNode: "get_b", SourcePin: "value", TargetNode: "set_a", TargetPin: "value"})
-	bp.AddConnection(blueprint.Connection{ID: "d6", SourceNode: "add", SourcePin: "result", TargetNode: "set_b", TargetPin: "value"})
-	bp.AddConnection(blueprint.Connection{ID: "d7", SourceNode: "get_i2", SourcePin: "value", TargetNode: "inc_i", TargetPin: "a"})
-	bp.AddConnection(blueprint.Connection{ID: "d8", SourceNode: "inc_i", SourcePin: "result", TargetNode: "set_i", TargetPin: "value"})
-	bp.AddConnection(blueprint.Connection{ID: "d9", SourceNode: "get_final_b", SourcePin: "value", TargetNode: "end", TargetPin: "result"})
+	bp.AddConnection(blueprint.Connection{ID: "d5", SourceNode: "add", SourcePin: "result", TargetNode: "set_temp", TargetPin: "value"})
+	bp.AddConnection(blueprint.Connection{ID: "d6", SourceNode: "get_b", SourcePin: "value", TargetNode: "set_a", TargetPin: "value"})
+	bp.AddConnection(blueprint.Connection{ID: "d7", SourceNode: "get_temp", SourcePin: "value", TargetNode: "set_b", TargetPin: "value"})
+	bp.AddConnection(blueprint.Connection{ID: "d8", SourceNode: "get_i2", SourcePin: "value", TargetNode: "inc_i", TargetPin: "a"})
+	bp.AddConnection(blueprint.Connection{ID: "d9", SourceNode: "inc_i", SourcePin: "result", TargetNode: "set_i", TargetPin: "value"})
+	bp.AddConnection(blueprint.Connection{ID: "d10", SourceNode: "get_final_b", SourcePin: "value", TargetNode: "end", TargetPin: "result"})
 
 	return bp
 }

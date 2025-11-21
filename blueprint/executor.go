@@ -583,6 +583,11 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		return e.executeForLoop(ctx, bp, node, info, executed, returned, depth)
 	}
 
+	// WhileLoop 节点特殊处理：真正执行循环
+	if node.Type == NodeTypeFlowControl && node.Operation == "while_loop" {
+		return e.executeWhileLoop(ctx, bp, node, info, executed, returned, depth)
+	}
+
 	// Delay 节点特殊处理：异步延时，让出执行权
 	if node.Type == NodeTypeAsync && node.Operation == "delay" {
 		return e.executeDelay(ctx, bp, node, info, executed, returned, depth)
@@ -766,6 +771,102 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 	// 执行 completed 分支
 	for _, completedNode := range completedNodes {
 		if err := e.executeNodeRecursive(ctx, bp, completedNode, info, executed, returned, depth+1); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// executeWhileLoop 执行 WhileLoop 节点的真正循环
+func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 获取 loop 和 done 连接的节点
+	var loopBodyNodes []*Node
+	var doneNodes []*Node
+
+	if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
+		for pinName, targets := range execOutputs {
+			for _, target := range targets {
+				if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+					if pinName == "loop" {
+						loopBodyNodes = append(loopBodyNodes, targetNode)
+					} else if pinName == "done" {
+						doneNodes = append(doneNodes, targetNode)
+					}
+				}
+			}
+		}
+	}
+
+	// 获取最大迭代次数
+	maxIterations := e.options.MaxIterations
+	if maxIterations <= 0 {
+		maxIterations = 10000
+	}
+
+	// 执行循环
+	count := 0
+	for {
+		if returned.IsReturned() || ctx.IsCancelled() {
+			break
+		}
+		if count >= maxIterations {
+			return fmt.Errorf("while_loop exceeded maximum iterations (%d)", maxIterations)
+		}
+
+		// 重新计算条件：执行所有连接到 condition 引脚的数据依赖
+		// 并收集结果到 node 的输入
+		conditionExecuted := &sync.Map{}
+		e.executeDataDependencies(ctx, bp, node, info, conditionExecuted)
+
+		// 从连接获取条件值
+		condition := false
+		for _, conn := range bp.Connections {
+			if conn.TargetNode == node.ID && conn.TargetPin == "condition" {
+				sourceNode := bp.nodeMap[conn.SourceNode]
+				if sourceNode != nil {
+					if v, ok := sourceNode.GetOutputValue(conn.SourcePin); ok {
+						node.SetInputValue("condition", v)
+						switch c := v.(type) {
+						case bool:
+							condition = c
+						case float64:
+							condition = c != 0
+						case int:
+							condition = c != 0
+						}
+					}
+				}
+			}
+		}
+
+		// 如果条件为 false，退出循环
+		if !condition {
+			break
+		}
+
+		// 执行 loop 分支（需要重置已执行状态以允许重复执行）
+		loopExecuted := &sync.Map{}
+		for _, bodyNode := range loopBodyNodes {
+			if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, returned, depth+1); err != nil {
+				return err
+			}
+		}
+
+		count++
+	}
+
+	// Debug: 打印实际迭代次数
+	// fmt.Printf("WhileLoop: executed %d iterations\n", count)
+
+	// 如果已返回，不执行 done 分支
+	if returned.IsReturned() {
+		return nil
+	}
+
+	// 执行 done 分支
+	for _, doneNode := range doneNodes {
+		if err := e.executeNodeRecursive(ctx, bp, doneNode, info, executed, returned, depth+1); err != nil {
 			return err
 		}
 	}

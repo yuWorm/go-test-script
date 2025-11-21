@@ -202,10 +202,30 @@ func (b *Blueprint) Validate() error {
 }
 
 // detectCycles 检测蓝图中是否存在循环依赖
+// 注意：只检查数据流连接，执行流连接允许循环（如 while 循环）
 func (b *Blueprint) detectCycles() error {
-	// 构建邻接表
+	// 构建邻接表（只包含数据流连接）
 	graph := make(map[string][]string)
 	for _, conn := range b.Connections {
+		sourceNode := b.nodeMap[conn.SourceNode]
+		if sourceNode == nil {
+			continue
+		}
+
+		// 检查是否为执行流连接
+		isExecFlow := false
+		for _, pin := range sourceNode.OutputPins {
+			if pin.Name == conn.SourcePin && pin.Kind == PinKindExecution {
+				isExecFlow = true
+				break
+			}
+		}
+
+		// 跳过执行流连接
+		if isExecFlow {
+			continue
+		}
+
 		graph[conn.SourceNode] = append(graph[conn.SourceNode], conn.TargetNode)
 	}
 
