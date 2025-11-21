@@ -413,7 +413,30 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 
 	// 3. 从Start节点开始递归执行
 	executed := &sync.Map{}
-	return e.executeNodeRecursive(ctx, bp, startNode, flowInfo, executed, 0)
+	returned := &returnSignal{} // 用于标记是否已返回
+	return e.executeNodeRecursive(ctx, bp, startNode, flowInfo, executed, returned, 0)
+}
+
+// returnSignal 返回信号，用于标记执行是否已通过End节点返回
+type returnSignal struct {
+	returned bool
+	mu       sync.Mutex
+}
+
+func (r *returnSignal) SetReturned() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.returned {
+		return false // 已经返回过
+	}
+	r.returned = true
+	return true
+}
+
+func (r *returnSignal) IsReturned() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.returned
 }
 
 // flowInfo 执行流信息
@@ -493,15 +516,22 @@ func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
 }
 
 // executeNodeRecursive 递归执行节点
-func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, depth int) error {
+func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 检查是否已经通过End节点返回
+	if returned.IsReturned() {
+		return nil
+	}
+
 	// 检查递归深度
 	if e.options.MaxDepth > 0 && depth > e.options.MaxDepth {
 		return fmt.Errorf("execution depth %d exceeds maximum allowed %d", depth, e.options.MaxDepth)
 	}
 
-	// 检查是否已执行
-	if _, loaded := executed.LoadOrStore(node.ID, true); loaded {
-		return nil
+	// 检查是否已执行（End节点除外，允许多个End节点）
+	if node.Type != NodeTypeEnd {
+		if _, loaded := executed.LoadOrStore(node.ID, true); loaded {
+			return nil
+		}
 	}
 
 	// 检查是否取消
@@ -520,14 +550,15 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		}
 	}
 
-	// End节点：执行完成即结束，不继续传播
+	// End节点：标记已返回，停止执行（类似 return 语句）
 	if node.Type == NodeTypeEnd {
+		returned.SetReturned()
 		return nil
 	}
 
 	// ForLoop 节点特殊处理：真正执行循环
 	if node.Type == NodeTypeFlowControl && node.Operation == "for_loop" {
-		return e.executeForLoop(ctx, bp, node, info, executed, depth)
+		return e.executeForLoop(ctx, bp, node, info, executed, returned, depth)
 	}
 
 	// 判断是否是序列节点（并行执行）
@@ -556,7 +587,7 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 			wg.Add(1)
 			go func(n *Node) {
 				defer wg.Done()
-				if err := e.executeNodeRecursive(ctx, bp, n, info, executed, depth+1); err != nil {
+				if err := e.executeNodeRecursive(ctx, bp, n, info, executed, returned, depth+1); err != nil {
 					errChan <- err
 				}
 			}(nextNode)
@@ -574,7 +605,11 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 	} else {
 		// 顺序执行
 		for _, nextNode := range nextNodes {
-			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed, depth+1); err != nil {
+			// 检查是否已返回
+			if returned.IsReturned() {
+				return nil
+			}
+			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed, returned, depth+1); err != nil {
 				return err
 			}
 		}
@@ -584,7 +619,7 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 }
 
 // executeForLoop 执行 ForLoop 节点的真正循环
-func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, depth int) error {
+func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 获取循环参数
 	start := 0.0
 	end := 10.0
@@ -663,8 +698,8 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 	count := 0
 	if step > 0 {
 		for i := start; i < end; i += step {
-			if ctx.IsCancelled() {
-				return fmt.Errorf("execution cancelled")
+			if returned.IsReturned() || ctx.IsCancelled() {
+				break
 			}
 			if count >= maxIterations {
 				return fmt.Errorf("for_loop exceeded maximum iterations (%d)", maxIterations)
@@ -677,7 +712,7 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 			// 执行 loop_body 分支（需要重置已执行状态以允许重复执行）
 			loopExecuted := &sync.Map{}
 			for _, bodyNode := range loopBodyNodes {
-				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, depth+1); err != nil {
+				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, returned, depth+1); err != nil {
 					return err
 				}
 			}
@@ -686,8 +721,8 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 		}
 	} else {
 		for i := start; i > end; i += step {
-			if ctx.IsCancelled() {
-				return fmt.Errorf("execution cancelled")
+			if returned.IsReturned() || ctx.IsCancelled() {
+				break
 			}
 			if count >= maxIterations {
 				return fmt.Errorf("for_loop exceeded maximum iterations (%d)", maxIterations)
@@ -698,7 +733,7 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 
 			loopExecuted := &sync.Map{}
 			for _, bodyNode := range loopBodyNodes {
-				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, depth+1); err != nil {
+				if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, returned, depth+1); err != nil {
 					return err
 				}
 			}
@@ -710,9 +745,14 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 	// 设置最终输出
 	node.SetOutputValue("count", float64(count))
 
+	// 如果已返回，不执行 completed 分支
+	if returned.IsReturned() {
+		return nil
+	}
+
 	// 执行 completed 分支
 	for _, completedNode := range completedNodes {
-		if err := e.executeNodeRecursive(ctx, bp, completedNode, info, executed, depth+1); err != nil {
+		if err := e.executeNodeRecursive(ctx, bp, completedNode, info, executed, returned, depth+1); err != nil {
 			return err
 		}
 	}

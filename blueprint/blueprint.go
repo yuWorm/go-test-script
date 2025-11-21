@@ -150,7 +150,6 @@ func (b *Blueprint) Validate() error {
 
 	// 验证所有节点
 	nodeIDs := make(map[string]bool)
-	hasStart := false
 	for _, node := range b.Nodes {
 		if err := node.Validate(); err != nil {
 			return err
@@ -163,16 +162,6 @@ func (b *Blueprint) Validate() error {
 			return fmt.Errorf("duplicate node ID: %s", node.ID)
 		}
 		nodeIDs[node.ID] = true
-
-		// 检查是否有Start节点
-		if node.Type == NodeTypeStart {
-			hasStart = true
-		}
-	}
-
-	// 必须有Start节点
-	if !hasStart && len(b.Nodes) > 0 {
-		return fmt.Errorf("blueprint must have a start node")
 	}
 
 	// 验证变量名
