@@ -1,0 +1,114 @@
+[
+  {
+    "language": "Go",
+    "n": 10,
+    "result": 55,
+    "time_ms": 0.000308,
+    "memory_kb": 0
+  },
+  {
+    "language": "Node.js",
+    "n": 10,
+    "result": 55,
+    "time_ms": 0.314539,
+    "memory_kb": 6
+  },
+  {
+    "language": "Python",
+    "n": 10,
+    "result": 55,
+    "time_ms": 0.011659999927360332,
+    "memory_kb": 0
+  },
+  {
+    "language": "Blueprint",
+    "n": 10,
+    "result": 0,
+    "time_ms": 0.069803,
+    "memory_kb": 33
+  },
+  {
+    "language": "Go",
+    "n": 20,
+    "result": 6765,
+    "time_ms": 0.000279,
+    "memory_kb": 0
+  },
+  {
+    "language": "Node.js",
+    "n": 20,
+    "result": 6765,
+    "time_ms": 0.324571,
+    "memory_kb": 8
+  },
+  {
+    "language": "Python",
+    "n": 20,
+    "result": 6765,
+    "time_ms": 0.025431000040043727,
+    "memory_kb": 0
+  },
+  {
+    "language": "Blueprint",
+    "n": 20,
+    "result": 0,
+    "time_ms": 0.049674,
+    "memory_kb": 34
+  },
+  {
+    "language": "Go",
+    "n": 30,
+    "result": 832040,
+    "time_ms": 0.000477,
+    "memory_kb": 0
+  },
+  {
+    "language": "Node.js",
+    "n": 30,
+    "result": 832040,
+    "time_ms": 0.34296,
+    "memory_kb": 10
+  },
+  {
+    "language": "Python",
+    "n": 30,
+    "result": 832040,
+    "time_ms": 0.017149000086646993,
+    "memory_kb": 0
+  },
+  {
+    "language": "Blueprint",
+    "n": 30,
+    "result": 0,
+    "time_ms": 0.056372,
+    "memory_kb": 33
+  },
+  {
+    "language": "Go",
+    "n": 40,
+    "result": 102334155,
+    "time_ms": 0.000375,
+    "memory_kb": 0
+  },
+  {
+    "language": "Node.js",
+    "n": 40,
+    "result": 102334155,
+    "time_ms": 0.32683,
+    "memory_kb": 13
+  },
+  {
+    "language": "Python",
+    "n": 40,
+    "result": 102334155,
+    "time_ms": 0.04504599996835168,
+    "memory_kb": 0
+  },
+  {
+    "language": "Blueprint",
+    "n": 40,
+    "result": 0,
+    "time_ms": 0.061007,
+    "memory_kb": 33
+  }
+]
