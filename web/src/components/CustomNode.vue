@@ -30,13 +30,10 @@
         <span class="pin-icon">{{ getPinIcon(pin) }}</span>
         <span class="pin-label">{{ pin.name }}</span>
         <span class="pin-type">{{ pin.type }}</span>
-        <input
-          v-if="pin.value !== undefined && !isExecPin(pin)"
-          v-model="pin.value"
-          type="number"
-          class="pin-value"
-          @click.stop
-        />
+        <!-- 只显示值，不在节点上编辑（编辑在 PropertyPanel 中进行）-->
+        <span v-if="pin.value !== undefined && !isExecPin(pin)" class="pin-default-value">
+          {{ formatValue(pin.value) }}
+        </span>
       </div>
     </div>
 

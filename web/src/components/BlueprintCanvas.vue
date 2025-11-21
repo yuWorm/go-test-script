@@ -65,14 +65,14 @@ function convertToVueFlowEdges(): Edge[] {
   }))
 }
 
-// 监听蓝图变化
+// 监听蓝图变化 - 使用计数器触发更新，避免 deep watch 性能问题
 watch(
-  () => [blueprintStore.blueprint.nodes, blueprintStore.blueprint.connections, blueprintStore.debugSession],
+  () => blueprintStore.updateCounter,
   () => {
     nodes.value = convertToVueFlowNodes()
     edges.value = convertToVueFlowEdges()
   },
-  { deep: true, immediate: true }
+  { immediate: true }
 )
 
 // 节点变化处理

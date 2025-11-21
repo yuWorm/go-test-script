@@ -119,11 +119,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useBlueprintStore } from '../stores/blueprint'
 import type { Pin } from '../types/blueprint'
 
 const blueprintStore = useBlueprintStore()
+
+// 防抖函数
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
+  return ((...args: any[]) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => fn(...args), delay)
+  }) as T
+}
 
 const selectedNode = computed(() => blueprintStore.selectedNode)
 
@@ -168,7 +177,7 @@ function removePin(index: number) {
   updateNode()
 }
 
-function updateNode() {
+function doUpdateNode() {
   if (!selectedNode.value) return
   blueprintStore.updateNode(selectedNode.value.id, {
     label: selectedNode.value.label,
@@ -176,6 +185,9 @@ function updateNode() {
     output_pins: selectedNode.value.output_pins
   })
 }
+
+// 防抖更新节点（300ms）
+const updateNode = debounce(doUpdateNode, 300)
 
 function close() {
   blueprintStore.selectNode(null)

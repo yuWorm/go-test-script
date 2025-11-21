@@ -26,6 +26,12 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   const isExecuting = ref(false)
   const executionResult = ref<ExecutionResult | null>(null)
   const debugSession = ref<DebugSession | null>(null)
+  const updateCounter = ref(0) // 用于触发视图更新，避免 deep watch
+
+  // 触发视图更新
+  function triggerUpdate() {
+    updateCounter.value++
+  }
 
   // 计算属性
   const selectedNode = computed(() => {
@@ -39,12 +45,14 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   // 方法：节点操作
   function addNode(node: Node) {
     blueprint.value.nodes.push(node)
+    triggerUpdate()
   }
 
   function updateNode(nodeId: string, updates: Partial<Node>) {
     const index = blueprint.value.nodes.findIndex(n => n.id === nodeId)
     if (index !== -1 && blueprint.value.nodes[index]) {
       Object.assign(blueprint.value.nodes[index], updates)
+      triggerUpdate()
     }
   }
 
@@ -55,6 +63,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     blueprint.value.connections = blueprint.value.connections.filter(
       c => c.source_node !== nodeId && c.target_node !== nodeId
     )
+    triggerUpdate()
   }
 
   function getNode(nodeId: string): Node | undefined {
@@ -72,6 +81,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     )
     if (!exists) {
       blueprint.value.connections.push(connection)
+      triggerUpdate()
     }
   }
 
@@ -79,6 +89,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     blueprint.value.connections = blueprint.value.connections.filter(
       c => c.id !== connectionId
     )
+    triggerUpdate()
   }
 
   function getConnections(nodeId: string): Connection[] {
@@ -106,6 +117,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     selectedNodeId.value = null
     executionResult.value = null
     debugSession.value = null
+    triggerUpdate()
   }
 
   function loadBlueprint(data: Blueprint) {
@@ -113,6 +125,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     selectedNodeId.value = null
     executionResult.value = null
     debugSession.value = null
+    triggerUpdate()
   }
 
   function exportBlueprint(): Blueprint {
@@ -164,6 +177,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
         }
       }
 
+      triggerUpdate()
       return result
     } catch (error: any) {
       console.error('Execute error:', error)
@@ -171,6 +185,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
         debugSession.value.status = 'failed'
         debugSession.value.endTime = Date.now()
       }
+      triggerUpdate()
       throw error
     } finally {
       isExecuting.value = false
@@ -185,6 +200,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
   function clearDebugSession() {
     debugSession.value = null
     executionResult.value = null
+    triggerUpdate()
   }
 
   return {
@@ -195,6 +211,7 @@ export const useBlueprintStore = defineStore('blueprint', () => {
     isExecuting,
     executionResult,
     debugSession,
+    updateCounter,
 
     // 计算属性
     nodeCount,
