@@ -578,40 +578,28 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		}
 	}
 
-	// 序列节点：并行执行所有分支
+	// 序列节点：并行执行所有分支（类似线程，不受return影响）
 	if isSequence && len(nextNodes) > 1 {
-		var wg sync.WaitGroup
-		errChan := make(chan error, len(nextNodes))
-
+		// 并行分支使用独立的 returnSignal，不受主流程影响
 		for _, nextNode := range nextNodes {
-			wg.Add(1)
 			go func(n *Node) {
-				defer wg.Done()
-				if err := e.executeNodeRecursive(ctx, bp, n, info, executed, returned, depth+1); err != nil {
-					errChan <- err
-				}
+				// 每个并行分支有自己的 returnSignal
+				branchReturned := &returnSignal{}
+				e.executeNodeRecursive(ctx, bp, n, info, executed, branchReturned, depth+1)
 			}(nextNode)
 		}
+		// 不等待并行分支完成，直接返回
+		return nil
+	}
 
-		wg.Wait()
-		close(errChan)
-
-		// 返回第一个错误
-		for err := range errChan {
-			if err != nil {
-				return err
-			}
+	// 顺序执行
+	for _, nextNode := range nextNodes {
+		// 检查是否已返回
+		if returned.IsReturned() {
+			return nil
 		}
-	} else {
-		// 顺序执行
-		for _, nextNode := range nextNodes {
-			// 检查是否已返回
-			if returned.IsReturned() {
-				return nil
-			}
-			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed, returned, depth+1); err != nil {
-				return err
-			}
+		if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed, returned, depth+1); err != nil {
+			return err
 		}
 	}
 
