@@ -2,6 +2,8 @@ package nodes
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/go-blueprint-engine/blueprint"
 )
 
@@ -151,8 +153,8 @@ func (e *DelayExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[stri
 		duration = 1000 // 默认1秒
 	}
 
-	// 模拟延时（实际实现可能需要异步处理）
-	// time.Sleep(time.Duration(duration) * time.Millisecond)
+	// 真正的延时
+	time.Sleep(time.Duration(duration) * time.Millisecond)
 
 	return map[string]interface{}{
 		"duration": duration,

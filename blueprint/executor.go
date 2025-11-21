@@ -394,10 +394,30 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 		return fmt.Errorf("no start node found in blueprint")
 	}
 
-	// 2. 构建连接图（包括执行连接和数据连接）
-	execFlowMap := make(map[string]map[string][]*execFlowTarget)    // 执行流
-	dataFlowMap := make(map[string]map[string][]string)              // 数据流：nodeID -> pinName -> [targetNodeIDs]
-	incomingExecMap := make(map[string]bool)                         // 有执行输入的节点
+	// 2. 构建连接图
+	flowInfo := e.buildFlowInfo(bp)
+
+	// 3. 从Start节点开始递归执行
+	executed := &sync.Map{}
+	return e.executeNodeRecursive(ctx, bp, startNode, flowInfo, executed)
+}
+
+// flowInfo 执行流信息
+type flowInfo struct {
+	execFlowMap         map[string]map[string][]*execFlowTarget // 执行流
+	dataFlowMap         map[string]map[string][]string          // 数据流
+	incomingExecMap     map[string]bool                         // 有执行输入的节点
+	needsExecActivation map[string]bool                         // 需要执行引脚激活的节点
+}
+
+// buildFlowInfo 构建执行流信息
+func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
+	info := &flowInfo{
+		execFlowMap:         make(map[string]map[string][]*execFlowTarget),
+		dataFlowMap:         make(map[string]map[string][]string),
+		incomingExecMap:     make(map[string]bool),
+		needsExecActivation: make(map[string]bool),
+	}
 
 	for _, conn := range bp.Connections {
 		sourceNode := bp.nodeMap[conn.SourceNode]
@@ -405,7 +425,6 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 			continue
 		}
 
-		// 查找源引脚
 		var sourcePin *Pin
 		for i := range sourceNode.OutputPins {
 			if sourceNode.OutputPins[i].Name == conn.SourcePin {
@@ -424,33 +443,25 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 		}
 
 		if sourcePinKind == PinKindExecution {
-			// 执行引脚连接
-			if execFlowMap[conn.SourceNode] == nil {
-				execFlowMap[conn.SourceNode] = make(map[string][]*execFlowTarget)
+			if info.execFlowMap[conn.SourceNode] == nil {
+				info.execFlowMap[conn.SourceNode] = make(map[string][]*execFlowTarget)
 			}
-			execFlowMap[conn.SourceNode][conn.SourcePin] = append(
-				execFlowMap[conn.SourceNode][conn.SourcePin],
-				&execFlowTarget{
-					nodeID:      conn.TargetNode,
-					execPinName: conn.TargetPin,
-				},
+			info.execFlowMap[conn.SourceNode][conn.SourcePin] = append(
+				info.execFlowMap[conn.SourceNode][conn.SourcePin],
+				&execFlowTarget{nodeID: conn.TargetNode, execPinName: conn.TargetPin},
 			)
-			incomingExecMap[conn.TargetNode] = true
+			info.incomingExecMap[conn.TargetNode] = true
 		} else {
-			// 数据引脚连接
-			if dataFlowMap[conn.SourceNode] == nil {
-				dataFlowMap[conn.SourceNode] = make(map[string][]string)
+			if info.dataFlowMap[conn.SourceNode] == nil {
+				info.dataFlowMap[conn.SourceNode] = make(map[string][]string)
 			}
-			dataFlowMap[conn.SourceNode][conn.SourcePin] = append(
-				dataFlowMap[conn.SourceNode][conn.SourcePin],
+			info.dataFlowMap[conn.SourceNode][conn.SourcePin] = append(
+				info.dataFlowMap[conn.SourceNode][conn.SourcePin],
 				conn.TargetNode,
 			)
 		}
 	}
 
-	// 3. 检测哪些节点需要执行引脚
-	// 规则：如果节点有执行输入引脚定义，则必须通过执行流激活
-	needsExecActivation := make(map[string]bool)
 	for _, node := range bp.Nodes {
 		for _, pin := range node.InputPins {
 			pinKind := pin.Kind
@@ -458,85 +469,122 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 				pinKind = PinKindData
 			}
 			if pinKind == PinKindExecution {
-				needsExecActivation[node.ID] = true
+				info.needsExecActivation[node.ID] = true
 				break
 			}
 		}
 	}
 
-	// 4. 使用广度优先搜索从Start节点开始执行
-	executed := make(map[string]bool)
-	queue := []*Node{startNode}
+	return info
+}
 
-	for len(queue) > 0 {
-		node := queue[0]
-		queue = queue[1:]
+// executeNodeRecursive 递归执行节点
+func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map) error {
+	// 检查是否已执行
+	if _, loaded := executed.LoadOrStore(node.ID, true); loaded {
+		return nil
+	}
 
-		// 检查是否已执行
-		if executed[node.ID] {
-			continue
+	// 检查是否取消
+	if ctx.IsCancelled() {
+		return fmt.Errorf("execution cancelled")
+	}
+
+	// 先执行纯数据节点依赖（无执行引脚的节点）
+	e.executeDataDependencies(ctx, bp, node, info, executed)
+
+	// 执行当前节点
+	if err := e.executeNode(ctx, bp, node); err != nil {
+		ctx.AddError(fmt.Errorf("node %s execution failed: %w", node.ID, err))
+		if e.options.StopOnError {
+			return err
+		}
+	}
+
+	// End节点：执行完成即结束，不继续传播
+	if node.Type == NodeTypeEnd {
+		return nil
+	}
+
+	// 判断是否是序列节点（并行执行）
+	isSequence := node.Type == NodeTypeFlowControl && node.Operation == "sequence"
+
+	// 收集要执行的下一批节点
+	var nextNodes []*Node
+	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+		for execPinName, targets := range execOutputs {
+			if e.shouldActivateExecPin(node, execPinName) {
+				for _, target := range targets {
+					if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+						nextNodes = append(nextNodes, targetNode)
+					}
+				}
+			}
+		}
+	}
+
+	// 序列节点：并行执行所有分支
+	if isSequence && len(nextNodes) > 1 {
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(nextNodes))
+
+		for _, nextNode := range nextNodes {
+			wg.Add(1)
+			go func(n *Node) {
+				defer wg.Done()
+				if err := e.executeNodeRecursive(ctx, bp, n, info, executed); err != nil {
+					errChan <- err
+				}
+			}(nextNode)
 		}
 
-		// 检查是否取消
-		if ctx.IsCancelled() {
-			return fmt.Errorf("execution cancelled")
-		}
+		wg.Wait()
+		close(errChan)
 
-		// 执行节点
-		if err := e.executeNode(ctx, bp, node); err != nil {
-			ctx.AddError(fmt.Errorf("node %s execution failed: %w", node.ID, err))
-			if e.options.StopOnError {
+		// 返回第一个错误
+		for err := range errChan {
+			if err != nil {
 				return err
 			}
 		}
-
-		executed[node.ID] = true
-
-		// 5. 确定下一步要执行的节点
-		nextNodes := make(map[string]bool)
-
-		// 5a. 通过执行引脚连接的节点
-		if execOutputs, exists := execFlowMap[node.ID]; exists {
-			for execPinName, targets := range execOutputs {
-				// 检查执行引脚是否应该激活
-				if e.shouldActivateExecPin(node, execPinName) {
-					for _, target := range targets {
-						if !executed[target.nodeID] {
-							nextNodes[target.nodeID] = true
-						}
-					}
-				}
-			}
-		}
-
-		// 5b. 通过数据引脚连接的节点（仅当目标节点不需要执行引脚激活时）
-		if dataOutputs, exists := dataFlowMap[node.ID]; exists {
-			for _, targetNodeIDs := range dataOutputs {
-				for _, targetNodeID := range targetNodeIDs {
-					// 如果目标节点需要执行引脚激活，则跳过
-					if needsExecActivation[targetNodeID] {
-						continue
-					}
-					// 如果目标节点已经有执行输入连接，也跳过
-					if incomingExecMap[targetNodeID] {
-						continue
-					}
-					if !executed[targetNodeID] {
-						nextNodes[targetNodeID] = true
-					}
-				}
-			}
-		}
-
-		// 5c. 将下一步节点加入队列
-		for nodeID := range nextNodes {
-			if targetNode := bp.nodeMap[nodeID]; targetNode != nil {
-				queue = append(queue, targetNode)
+	} else {
+		// 顺序执行
+		for _, nextNode := range nextNodes {
+			if err := e.executeNodeRecursive(ctx, bp, nextNode, info, executed); err != nil {
+				return err
 			}
 		}
 	}
 
 	return nil
+}
+
+// executeDataDependencies 执行纯数据节点依赖
+func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map) {
+	// 找到连接到当前节点数据引脚的所有源节点
+	for _, conn := range bp.Connections {
+		if conn.TargetNode != node.ID {
+			continue
+		}
+
+		sourceNode := bp.nodeMap[conn.SourceNode]
+		if sourceNode == nil {
+			continue
+		}
+
+		// 如果源节点需要执行引脚激活，跳过（会通过执行流执行）
+		if info.needsExecActivation[sourceNode.ID] {
+			continue
+		}
+
+		// 递归执行纯数据节点
+		if _, loaded := executed.LoadOrStore(sourceNode.ID, true); !loaded {
+			// 先执行它的依赖
+			e.executeDataDependencies(ctx, bp, sourceNode, info, executed)
+			// 执行节点
+			e.executeNode(ctx, bp, sourceNode)
+		}
+	}
 }
 
 // execFlowTarget 执行流目标

@@ -1,0 +1,145 @@
+{
+  "id": "parallel_demo",
+  "name": "并行执行演示",
+  "description": "序列节点并行执行多个分支，每个分支有不同延时",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "label": "开始",
+      "input_pins": [],
+      "output_pins": [
+        {"name": "exec", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 100, "y": 200}
+    },
+    {
+      "id": "sequence",
+      "type": "flow_control",
+      "operation": "sequence",
+      "label": "并行序列",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"}
+      ],
+      "output_pins": [
+        {"name": "then_0", "kind": "exec", "type": "exec"},
+        {"name": "then_1", "kind": "exec", "type": "exec"},
+        {"name": "then_2", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 300, "y": 200}
+    },
+    {
+      "id": "delay_1",
+      "type": "async",
+      "operation": "delay",
+      "label": "延时 100ms",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float", "value": 100}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 500, "y": 50}
+    },
+    {
+      "id": "delay_2",
+      "type": "async",
+      "operation": "delay",
+      "label": "延时 200ms",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float", "value": 200}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 500, "y": 200}
+    },
+    {
+      "id": "delay_3",
+      "type": "async",
+      "operation": "delay",
+      "label": "延时 300ms",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float", "value": 300}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"},
+        {"name": "duration", "kind": "data", "type": "float"}
+      ],
+      "position": {"x": 500, "y": 350}
+    },
+    {
+      "id": "print_1",
+      "type": "debug",
+      "operation": "print",
+      "label": "打印 1",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"},
+        {"name": "label", "kind": "data", "type": "string", "value": "Branch 1 done"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 700, "y": 50}
+    },
+    {
+      "id": "print_2",
+      "type": "debug",
+      "operation": "print",
+      "label": "打印 2",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"},
+        {"name": "label", "kind": "data", "type": "string", "value": "Branch 2 done"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 700, "y": 200}
+    },
+    {
+      "id": "print_3",
+      "type": "debug",
+      "operation": "print",
+      "label": "打印 3",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"},
+        {"name": "value", "kind": "data", "type": "any"},
+        {"name": "label", "kind": "data", "type": "string", "value": "Branch 3 done"}
+      ],
+      "output_pins": [
+        {"name": "exec_out", "kind": "exec", "type": "exec"}
+      ],
+      "position": {"x": 700, "y": 350}
+    },
+    {
+      "id": "end",
+      "type": "end",
+      "label": "结束",
+      "input_pins": [
+        {"name": "exec_in", "kind": "exec", "type": "exec"}
+      ],
+      "output_pins": [],
+      "position": {"x": 900, "y": 200}
+    }
+  ],
+  "connections": [
+    {"id": "c1", "source_node": "start", "source_pin": "exec", "target_node": "sequence", "target_pin": "exec_in"},
+    {"id": "c2", "source_node": "sequence", "source_pin": "then_0", "target_node": "delay_1", "target_pin": "exec_in"},
+    {"id": "c3", "source_node": "sequence", "source_pin": "then_1", "target_node": "delay_2", "target_pin": "exec_in"},
+    {"id": "c4", "source_node": "sequence", "source_pin": "then_2", "target_node": "delay_3", "target_pin": "exec_in"},
+    {"id": "c5", "source_node": "delay_1", "source_pin": "exec_out", "target_node": "print_1", "target_pin": "exec_in"},
+    {"id": "c6", "source_node": "delay_2", "source_pin": "exec_out", "target_node": "print_2", "target_pin": "exec_in"},
+    {"id": "c7", "source_node": "delay_3", "source_pin": "exec_out", "target_node": "print_3", "target_pin": "exec_in"},
+    {"id": "c8", "source_node": "delay_1", "source_pin": "duration", "target_node": "print_1", "target_pin": "value"},
+    {"id": "c9", "source_node": "delay_2", "source_pin": "duration", "target_node": "print_2", "target_pin": "value"},
+    {"id": "c10", "source_node": "delay_3", "source_pin": "duration", "target_node": "print_3", "target_pin": "value"},
+    {"id": "c11", "source_node": "print_2", "source_pin": "exec_out", "target_node": "end", "target_pin": "exec_in"}
+  ]
+}
