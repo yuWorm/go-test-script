@@ -467,6 +467,8 @@ type FlowInfo struct {
 	DataFlowMap         map[string]map[string][]string          // 数据流
 	IncomingExecMap     map[string]bool                         // 有执行输入的节点
 	NeedsExecActivation map[string]bool                         // 需要执行引脚激活的节点
+	// 优化：预编译的数据依赖链（拓扑排序后的执行顺序）
+	DataDependencyChain map[string][]*Node // nodeID -> 该节点的数据依赖链（按执行顺序）
 }
 
 // BuildFlowInfo 构建执行流信息
@@ -476,6 +478,7 @@ func BuildFlowInfo(bp *Blueprint) *FlowInfo {
 		DataFlowMap:         make(map[string]map[string][]string),
 		IncomingExecMap:     make(map[string]bool),
 		NeedsExecActivation: make(map[string]bool),
+		DataDependencyChain: make(map[string][]*Node),
 	}
 
 	for _, conn := range bp.Connections {
@@ -534,7 +537,45 @@ func BuildFlowInfo(bp *Blueprint) *FlowInfo {
 		}
 	}
 
+	// 预编译每个节点的数据依赖链
+	buildDataDependencyChain(bp, info)
+
 	return info
+}
+
+// buildDataDependencyChain 为每个节点构建数据依赖链（编译时优化）
+func buildDataDependencyChain(bp *Blueprint, info *FlowInfo) {
+	// 为每个节点构建其数据依赖的拓扑排序
+	for _, node := range bp.Nodes {
+		chain := make([]*Node, 0, 8)
+		visited := make(map[string]bool, 16)
+		collectDataDeps(bp, node, info, visited, &chain)
+		if len(chain) > 0 {
+			info.DataDependencyChain[node.ID] = chain
+		}
+	}
+}
+
+// collectDataDeps 递归收集数据依赖（深度优先，后序遍历确保依赖先执行）
+func collectDataDeps(bp *Blueprint, node *Node, info *FlowInfo, visited map[string]bool, chain *[]*Node) {
+	for _, conn := range bp.Connections {
+		if conn.TargetNode != node.ID {
+			continue
+		}
+		sourceNode := bp.nodeMap[conn.SourceNode]
+		if sourceNode == nil || visited[sourceNode.ID] {
+			continue
+		}
+		// 跳过需要执行引脚激活的节点
+		if info.NeedsExecActivation[sourceNode.ID] {
+			continue
+		}
+		visited[sourceNode.ID] = true
+		// 先递归处理依赖的依赖
+		collectDataDeps(bp, sourceNode, info, visited, chain)
+		// 后序添加（依赖先执行）
+		*chain = append(*chain, sourceNode)
+	}
 }
 
 // executeNodeRecursive 递归执行节点
@@ -778,7 +819,7 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 	return nil
 }
 
-// executeWhileLoop 执行 WhileLoop 节点的真正循环
+// executeWhileLoop 执行 WhileLoop 节点的真正循环（优化版）
 func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 获取 loop 和 done 连接的节点
 	var loopBodyNodes []*Node
@@ -798,11 +839,26 @@ func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *
 		}
 	}
 
+	// 预缓存条件连接信息（避免每次迭代遍历）
+	var conditionSourceNode *Node
+	var conditionSourcePin string
+	for _, conn := range bp.Connections {
+		if conn.TargetNode == node.ID && conn.TargetPin == "condition" {
+			conditionSourceNode = bp.nodeMap[conn.SourceNode]
+			conditionSourcePin = conn.SourcePin
+			break
+		}
+	}
+
 	// 获取最大迭代次数
 	maxIterations := e.options.MaxIterations
 	if maxIterations <= 0 {
 		maxIterations = 10000
 	}
+
+	// 优化：预分配并复用 map（避免每次迭代分配新的 sync.Map）
+	conditionExecuted := make(map[string]bool, 16)
+	loopExecuted := make(map[string]bool, 32)
 
 	// 执行循环
 	count := 0
@@ -814,28 +870,26 @@ func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *
 			return fmt.Errorf("while_loop exceeded maximum iterations (%d)", maxIterations)
 		}
 
-		// 重新计算条件：执行所有连接到 condition 引脚的数据依赖
-		// 并收集结果到 node 的输入
-		conditionExecuted := &sync.Map{}
-		e.executeDataDependencies(ctx, bp, node, info, conditionExecuted)
+		// 清空并复用 map（Go 1.21+ clear 或手动清空）
+		for k := range conditionExecuted {
+			delete(conditionExecuted, k)
+		}
 
-		// 从连接获取条件值
+		// 使用优化版执行数据依赖
+		e.executeDataDependenciesFast(ctx, bp, node, info, conditionExecuted)
+
+		// 从缓存的连接获取条件值
 		condition := false
-		for _, conn := range bp.Connections {
-			if conn.TargetNode == node.ID && conn.TargetPin == "condition" {
-				sourceNode := bp.nodeMap[conn.SourceNode]
-				if sourceNode != nil {
-					if v, ok := sourceNode.GetOutputValue(conn.SourcePin); ok {
-						node.SetInputValue("condition", v)
-						switch c := v.(type) {
-						case bool:
-							condition = c
-						case float64:
-							condition = c != 0
-						case int:
-							condition = c != 0
-						}
-					}
+		if conditionSourceNode != nil {
+			if v, ok := conditionSourceNode.GetOutputValue(conditionSourcePin); ok {
+				node.SetInputValue("condition", v)
+				switch c := v.(type) {
+				case bool:
+					condition = c
+				case float64:
+					condition = c != 0
+				case int:
+					condition = c != 0
 				}
 			}
 		}
@@ -845,19 +899,20 @@ func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *
 			break
 		}
 
-		// 执行 loop 分支（需要重置已执行状态以允许重复执行）
-		loopExecuted := &sync.Map{}
+		// 清空并复用 loopExecuted map
+		for k := range loopExecuted {
+			delete(loopExecuted, k)
+		}
+
+		// 执行 loop 分支（使用优化的执行路径）
 		for _, bodyNode := range loopBodyNodes {
-			if err := e.executeNodeRecursive(ctx, bp, bodyNode, info, loopExecuted, returned, depth+1); err != nil {
+			if err := e.executeNodeRecursiveFast(ctx, bp, bodyNode, info, loopExecuted, returned, depth+1); err != nil {
 				return err
 			}
 		}
 
 		count++
 	}
-
-	// Debug: 打印实际迭代次数
-	// fmt.Printf("WhileLoop: executed %d iterations\n", count)
 
 	// 如果已返回，不执行 done 分支
 	if returned.IsReturned() {
@@ -868,6 +923,53 @@ func (e *Executor) executeWhileLoop(ctx *ExecutionContext, bp *Blueprint, node *
 	for _, doneNode := range doneNodes {
 		if err := e.executeNodeRecursive(ctx, bp, doneNode, info, executed, returned, depth+1); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// executeNodeRecursiveFast 优化版递归执行（用于 while 循环热路径）
+func (e *Executor) executeNodeRecursiveFast(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed map[string]bool, returned *returnSignal, depth int) error {
+	if returned.IsReturned() || ctx.IsCancelled() {
+		return nil
+	}
+	if e.options.MaxDepth > 0 && depth > e.options.MaxDepth {
+		return fmt.Errorf("execution depth %d exceeds maximum", depth)
+	}
+	if executed[node.ID] {
+		return nil
+	}
+	executed[node.ID] = true
+
+	// 执行数据依赖
+	e.executeDataDependenciesFast(ctx, bp, node, info, executed)
+
+	// 执行当前节点
+	if err := e.executeNode(ctx, bp, node); err != nil {
+		if e.options.StopOnError {
+			return err
+		}
+	}
+
+	// End 节点标记返回
+	if node.Type == NodeTypeEnd {
+		returned.SetReturned()
+		return nil
+	}
+
+	// 执行下一个节点
+	if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
+		for execPinName, targets := range execOutputs {
+			if e.shouldActivateExecPin(node, execPinName) {
+				for _, target := range targets {
+					if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+						if err := e.executeNodeRecursiveFast(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+							return err
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -895,30 +997,24 @@ func (e *Executor) executeNodeWithTimeout(ctx *ExecutionContext, bp *Blueprint, 
 	}
 }
 
-// executeDataDependencies 执行纯数据节点依赖
+// executeDataDependencies 执行纯数据节点依赖（使用预编译的依赖链）
 func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map) {
-	// 找到连接到当前节点数据引脚的所有源节点
-	for _, conn := range bp.Connections {
-		if conn.TargetNode != node.ID {
-			continue
+	// 使用预编译的依赖链，避免运行时遍历连接
+	chain := info.DataDependencyChain[node.ID]
+	for _, depNode := range chain {
+		if _, loaded := executed.LoadOrStore(depNode.ID, true); !loaded {
+			e.executeNode(ctx, bp, depNode)
 		}
+	}
+}
 
-		sourceNode := bp.nodeMap[conn.SourceNode]
-		if sourceNode == nil {
-			continue
-		}
-
-		// 如果源节点需要执行引脚激活，跳过（会通过执行流执行）
-		if info.NeedsExecActivation[sourceNode.ID] {
-			continue
-		}
-
-		// 递归执行纯数据节点
-		if _, loaded := executed.LoadOrStore(sourceNode.ID, true); !loaded {
-			// 先执行它的依赖
-			e.executeDataDependencies(ctx, bp, sourceNode, info, executed)
-			// 执行节点
-			e.executeNode(ctx, bp, sourceNode)
+// executeDataDependenciesFast 优化版：使用普通 map（用于 while 循环热路径）
+func (e *Executor) executeDataDependenciesFast(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed map[string]bool) {
+	chain := info.DataDependencyChain[node.ID]
+	for _, depNode := range chain {
+		if !executed[depNode.ID] {
+			executed[depNode.ID] = true
+			e.executeNode(ctx, bp, depNode)
 		}
 	}
 }
