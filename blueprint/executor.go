@@ -115,6 +115,14 @@ func (e *Executor) Execute(bp *Blueprint, inputs map[string]interface{}) (*Execu
 		Nodes:     e.collectNodeInfo(ctx, bp),
 	}
 
+	// 如果有返回值（通过 End 节点返回），添加到输出中
+	if ctx.IsReturned() {
+		returnValue := ctx.GetReturnValue()
+		for k, v := range returnValue {
+			result.Outputs["return."+k] = v
+		}
+	}
+
 	if err != nil {
 		result.Errors = append(result.Errors, err)
 		result.Success = false
@@ -131,6 +139,11 @@ func (e *Executor) executeSequential(ctx *ExecutionContext, bp *Blueprint) error
 		// 检查是否取消
 		if ctx.IsCancelled() {
 			return fmt.Errorf("execution cancelled")
+		}
+
+		// 检查是否已经通过 End 节点返回（类似 return 语句）
+		if ctx.IsReturned() {
+			break
 		}
 
 		// 执行节点
@@ -189,6 +202,11 @@ func (e *Executor) executeParallel(ctx *ExecutionContext, bp *Blueprint) error {
 						firstError = fmt.Errorf("execution cancelled")
 					}
 					errorMu.Unlock()
+					return
+				}
+
+				// 检查是否已经通过 End 节点返回（类似 return 语句）
+				if ctx.IsReturned() {
 					return
 				}
 

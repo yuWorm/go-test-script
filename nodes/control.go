@@ -183,12 +183,11 @@ func NewEndExecutor() *EndExecutor {
 	return &EndExecutor{}
 }
 
-// Execute 执行结束节点
+// Execute 执行结束节点（类似 UE5 Return 节点）
 func (e *EndExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// 结束节点接收输入并标记为已执行
 	outputs := make(map[string]interface{})
 
-	// 保留所有输入数据
+	// 保留所有输入数据作为返回值
 	for key, value := range inputs {
 		// 跳过执行引脚
 		if key != "exec_in" {
@@ -198,6 +197,9 @@ func (e *EndExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string
 
 	// 添加执行完成标记
 	outputs["executed"] = true
+
+	// 设置返回状态，终止后续节点执行（类似 return 语句）
+	ctx.SetReturned(outputs)
 
 	return outputs, nil
 }

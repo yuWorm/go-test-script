@@ -18,6 +18,11 @@ type ExecutionContext struct {
 	nodeErrors   map[string][]error // 每个节点的错误
 	errorsMu     sync.Mutex
 	asyncManager *AsyncTaskManager // 异步任务管理器
+
+	// 返回机制（类似 UE5 Return 节点）
+	returned    bool                   // 是否已返回
+	returnValue map[string]interface{} // 返回值
+	returnMu    sync.RWMutex
 }
 
 // NewExecutionContext 创建一个新的执行上下文
@@ -189,4 +194,26 @@ func (ec *ExecutionContext) IsCancelled() bool {
 // GetAsyncManager 获取异步任务管理器
 func (ec *ExecutionContext) GetAsyncManager() *AsyncTaskManager {
 	return ec.asyncManager
+}
+
+// SetReturned 设置返回状态（类似 return 语句，终止后续执行）
+func (ec *ExecutionContext) SetReturned(outputs map[string]interface{}) {
+	ec.returnMu.Lock()
+	defer ec.returnMu.Unlock()
+	ec.returned = true
+	ec.returnValue = outputs
+}
+
+// IsReturned 检查是否已返回
+func (ec *ExecutionContext) IsReturned() bool {
+	ec.returnMu.RLock()
+	defer ec.returnMu.RUnlock()
+	return ec.returned
+}
+
+// GetReturnValue 获取返回值
+func (ec *ExecutionContext) GetReturnValue() map[string]interface{} {
+	ec.returnMu.RLock()
+	defer ec.returnMu.RUnlock()
+	return ec.returnValue
 }
