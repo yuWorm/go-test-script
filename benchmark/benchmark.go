@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/d5/tengo/v2"
 	"github.com/go-blueprint-engine/blueprint"
 	"github.com/go-blueprint-engine/nodes"
 )
@@ -154,6 +156,54 @@ print(json.dumps({
 		Result:   result,
 		TimeMs:   data.TimeMs,
 		MemoryKB: uint64(data.MemoryKB),
+	}
+}
+
+// Tengo 脚本 Fibonacci
+func benchmarkTengo(n int) BenchmarkResult {
+	runtime.GC()
+	var m1 runtime.MemStats
+	runtime.ReadMemStats(&m1)
+
+	script := tengo.NewScript([]byte(fmt.Sprintf(`
+fib := func(n) {
+    if n <= 1 {
+        return n
+    }
+    a := 0
+    b := 1
+    for i := 2; i <= n; i++ {
+        temp := a + b
+        a = b
+        b = temp
+    }
+    return b
+}
+result := fib(%d)
+`, n)))
+
+	start := time.Now()
+	compiled, err := script.Compile()
+	if err != nil {
+		return BenchmarkResult{Language: "Tengo", N: n, TimeMs: -1}
+	}
+
+	if err := compiled.RunContext(context.Background()); err != nil {
+		return BenchmarkResult{Language: "Tengo", N: n, TimeMs: -1}
+	}
+	elapsed := time.Since(start)
+
+	var m2 runtime.MemStats
+	runtime.ReadMemStats(&m2)
+
+	result := compiled.Get("result").Int64()
+
+	return BenchmarkResult{
+		Language: "Tengo",
+		N:        n,
+		Result:   result,
+		TimeMs:   float64(elapsed.Nanoseconds()) / 1e6,
+		MemoryKB: (m2.TotalAlloc - m1.TotalAlloc) / 1024,
 	}
 }
 
@@ -607,6 +657,7 @@ func main() {
 			benchmarkGo(n),
 			benchmarkNodeJS(n),
 			benchmarkPython(n),
+			benchmarkTengo(n),
 			benchmarkBlueprint(n),
 		}
 
@@ -637,6 +688,7 @@ func main() {
 			benchmarkGo(n),
 			benchmarkNodeJS(n),
 			benchmarkPython(n),
+			benchmarkTengo(n),
 			benchmarkBlueprint(n),
 		)
 	}
