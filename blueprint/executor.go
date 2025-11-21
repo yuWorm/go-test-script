@@ -34,7 +34,7 @@ type ExecutionOptions struct {
 // DefaultExecutionOptions 返回默认执行选项
 func DefaultExecutionOptions() *ExecutionOptions {
 	return &ExecutionOptions{
-		Mode:           ExecutionModeSequential,
+		Mode:           ExecutionModeExecutionFlow, // 默认使用执行流模式（类似UE5）
 		Timeout:        0,
 		MaxConcurrency: 0,
 		StopOnError:    true,
@@ -579,14 +579,26 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		return e.executeForLoop(ctx, bp, node, info, executed, returned, depth)
 	}
 
-	// 判断是否是序列节点（并行执行）
-	isSequence := node.Type == NodeTypeFlowControl && node.Operation == "sequence"
+	// Delay 节点特殊处理：异步延时，让出执行权
+	if node.Type == NodeTypeAsync && node.Operation == "delay" {
+		return e.executeDelay(ctx, bp, node, info, executed, returned, depth)
+	}
 
-	// 收集要执行的下一批节点
+	// Join 节点特殊处理：等待所有分支完成
+	if node.Type == NodeTypeFlowControl && node.Operation == "join" {
+		return e.executeJoin(ctx, bp, node, info, executed, returned, depth)
+	}
+
+	// 判断节点类型
+	isFork := node.Type == NodeTypeFlowControl && node.Operation == "fork"
+
+	// 收集要执行的下一批节点（按引脚名排序以保证顺序）
 	var nextNodes []*Node
+	var nextPinNames []string
 	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
 		for execPinName, targets := range execOutputs {
 			if e.shouldActivateExecPin(node, execPinName) {
+				nextPinNames = append(nextPinNames, execPinName)
 				for _, target := range targets {
 					if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
 						nextNodes = append(nextNodes, targetNode)
@@ -596,18 +608,9 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		}
 	}
 
-	// 序列节点：并行执行所有分支（类似线程，不受return影响）
-	if isSequence && len(nextNodes) > 1 {
-		// 并行分支使用独立的 returnSignal，不受主流程影响
-		for _, nextNode := range nextNodes {
-			go func(n *Node) {
-				// 每个并行分支有自己的 returnSignal
-				branchReturned := &returnSignal{}
-				e.executeNodeRecursive(ctx, bp, n, info, executed, branchReturned, depth+1)
-			}(nextNode)
-		}
-		// 不等待并行分支完成，直接返回
-		return nil
+	// Fork 节点：真正的并行执行（类似 UE5 的 Fork/Spawn）
+	if isFork && len(nextNodes) > 0 {
+		return e.executeFork(ctx, bp, node, nextNodes, info, executed, returned, depth)
 	}
 
 	// 顺序执行
@@ -875,4 +878,194 @@ func (e *Executor) collectNodeInfo(ctx *ExecutionContext, bp *Blueprint) map[str
 	}
 
 	return nodeInfos
+}
+
+// executeFork 执行 Fork 节点 - 真正的并行执行
+// Fork 会同时启动所有分支，每个分支独立运行
+func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node, nextNodes []*Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	if len(nextNodes) == 0 {
+		return nil
+	}
+
+	// 获取 Fork 节点的 join_id（如果有，用于 Join 节点等待）
+	var joinID string
+	if id, ok := node.GetOutputValue("join_id"); ok {
+		joinID, _ = id.(string)
+	}
+	if joinID == "" {
+		joinID = node.ID // 默认使用节点ID
+	}
+
+	// 创建等待组和完成通道
+	var wg sync.WaitGroup
+	branchCount := len(nextNodes)
+	completedChan := make(chan bool, branchCount)
+
+	// 将 fork 信息存入上下文，供 Join 节点使用
+	ctx.SetVariable("__fork_"+joinID+"_total", branchCount)
+	ctx.SetVariable("__fork_"+joinID+"_completed", 0)
+	ctx.SetVariable("__fork_"+joinID+"_chan", completedChan)
+
+	// 并行启动所有分支
+	for i, nextNode := range nextNodes {
+		wg.Add(1)
+		go func(n *Node, branchIndex int) {
+			defer wg.Done()
+			defer func() {
+				// 通知完成
+				completedChan <- true
+				// 更新完成计数
+				ctx.mu.Lock()
+				if count, ok := ctx.variables["__fork_"+joinID+"_completed"].(int); ok {
+					ctx.variables["__fork_"+joinID+"_completed"] = count + 1
+				}
+				ctx.mu.Unlock()
+			}()
+
+			// 每个分支有独立的 returnSignal（不影响其他分支）
+			branchReturned := &returnSignal{}
+			// 每个分支有独立的 executed map（允许同一节点在不同分支执行）
+			branchExecuted := &sync.Map{}
+
+			e.executeNodeRecursive(ctx, bp, n, info, branchExecuted, branchReturned, depth+1)
+		}(nextNode, i)
+	}
+
+	// Fork 节点不等待分支完成，立即返回
+	// 如果需要等待，使用 Join 节点
+	return nil
+}
+
+// executeDelay 执行 Delay 节点 - 异步延时，让出执行权
+func (e *Executor) executeDelay(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 获取延时时间（秒）
+	duration := 1.0
+	if d, ok := node.GetInputValue("duration"); ok {
+		if f, err := toFloat64Value(d); err == nil {
+			duration = f
+		}
+	}
+
+	// 异步延时：启动 goroutine 等待后继续执行
+	go func() {
+		// 等待指定时间
+		time.Sleep(time.Duration(duration * float64(time.Second)))
+
+		// 检查是否已取消或已返回
+		if ctx.IsCancelled() || returned.IsReturned() {
+			return
+		}
+
+		// 设置输出
+		node.SetOutputValue("completed", true)
+
+		// 继续执行后续节点
+		if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+			for execPinName, targets := range execOutputs {
+				if e.shouldActivateExecPin(node, execPinName) {
+					for _, target := range targets {
+						if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+							e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1)
+						}
+					}
+				}
+			}
+		}
+	}()
+
+	// 立即返回，让出执行权
+	return nil
+}
+
+// toFloat64Value 辅助函数：转换为 float64
+func toFloat64Value(v interface{}) (float64, error) {
+	switch val := v.(type) {
+	case float64:
+		return val, nil
+	case float32:
+		return float64(val), nil
+	case int:
+		return float64(val), nil
+	case int64:
+		return float64(val), nil
+	default:
+		return 0, fmt.Errorf("cannot convert %T to float64", v)
+	}
+}
+
+// executeJoin 执行 Join 节点 - 等待所有 Fork 分支完成
+func (e *Executor) executeJoin(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 获取要等待的 fork_id
+	var forkID string
+	if id, ok := node.GetInputValue("fork_id"); ok {
+		forkID, _ = id.(string)
+	}
+	if forkID == "" {
+		// 尝试从属性获取
+		if id, ok := node.Properties["fork_id"]; ok {
+			forkID, _ = id.(string)
+		}
+	}
+	if forkID == "" {
+		return fmt.Errorf("join node requires fork_id")
+	}
+
+	// 获取超时时间（秒）
+	timeout := 30.0
+	if t, ok := node.GetInputValue("timeout"); ok {
+		if f, err := toFloat64Value(t); err == nil {
+			timeout = f
+		}
+	}
+
+	// 获取 fork 信息
+	totalVar, _ := ctx.GetVariable("__fork_" + forkID + "_total")
+	total, ok := totalVar.(int)
+	if !ok {
+		return fmt.Errorf("fork %s not found or not started", forkID)
+	}
+
+	chanVar, _ := ctx.GetVariable("__fork_" + forkID + "_chan")
+	completedChan, ok := chanVar.(chan bool)
+	if !ok {
+		return fmt.Errorf("fork %s channel not found", forkID)
+	}
+
+	// 等待所有分支完成
+	timeoutDuration := time.Duration(timeout * float64(time.Second))
+	timer := time.NewTimer(timeoutDuration)
+	defer timer.Stop()
+
+	completed := 0
+	for completed < total {
+		select {
+		case <-completedChan:
+			completed++
+		case <-timer.C:
+			return fmt.Errorf("join timeout waiting for fork %s (completed %d/%d)", forkID, completed, total)
+		case <-ctx.Context().Done():
+			return fmt.Errorf("execution cancelled while waiting for fork %s", forkID)
+		}
+	}
+
+	// 设置输出
+	node.SetOutputValue("completed", true)
+	node.SetOutputValue("branch_count", float64(total))
+
+	// 继续执行后续节点
+	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+		for execPinName, targets := range execOutputs {
+			if e.shouldActivateExecPin(node, execPinName) {
+				for _, target := range targets {
+					if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+						if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }

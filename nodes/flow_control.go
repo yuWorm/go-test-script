@@ -256,3 +256,55 @@ func (e *BranchExecutor) Validate(node *blueprint.Node) error {
 
 	return nil
 }
+
+// ForkExecutor Fork 节点执行器 - 并行分叉
+type ForkExecutor struct{}
+
+// NewForkExecutor 创建 Fork 执行器
+func NewForkExecutor() *ForkExecutor {
+	return &ForkExecutor{}
+}
+
+// Execute 执行 Fork - 启动并行分支
+func (e *ForkExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	outputs := make(map[string]interface{})
+
+	// 生成 join_id 供 Join 节点使用
+	joinID := fmt.Sprintf("fork_%d", inputs["__node_id"])
+	if id, ok := inputs["join_id"]; ok {
+		if strID, ok := id.(string); ok && strID != "" {
+			joinID = strID
+		}
+	}
+
+	outputs["join_id"] = joinID
+	outputs["started"] = true
+
+	return outputs, nil
+}
+
+// Validate 验证节点配置
+func (e *ForkExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}
+
+// JoinExecutor Join 节点执行器 - 等待汇合
+type JoinExecutor struct{}
+
+// NewJoinExecutor 创建 Join 执行器
+func NewJoinExecutor() *JoinExecutor {
+	return &JoinExecutor{}
+}
+
+// Execute 执行 Join - 等待所有分支完成（实际等待逻辑在 executor.go 中）
+func (e *JoinExecutor) Execute(ctx *blueprint.ExecutionContext, inputs map[string]interface{}) (map[string]interface{}, error) {
+	outputs := make(map[string]interface{})
+	outputs["completed"] = true
+	return outputs, nil
+}
+
+// Validate 验证节点配置
+func (e *JoinExecutor) Validate(node *blueprint.Node) error {
+	return nil
+}
+
