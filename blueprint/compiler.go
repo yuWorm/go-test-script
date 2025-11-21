@@ -62,7 +62,10 @@ func (c *Compiler) Compile(bp *Blueprint) error {
 	}
 	bp.executionOrder = executionOrder
 
-	// 7. 标记为已编译
+	// 7. 构建执行流信息（用于 ExecutionFlow 模式）
+	bp.flowInfo = BuildFlowInfo(bp)
+
+	// 8. 标记为已编译
 	bp.compiled = true
 
 	return nil

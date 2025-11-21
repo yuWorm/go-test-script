@@ -17,10 +17,11 @@ type Blueprint struct {
 
 	// 编译后的数据（不序列化）
 	compiled       bool
-	nodeMap        map[string]*Node      // ID -> Node 快速查找
-	executionOrder []*Node               // 拓扑排序后的执行顺序
+	nodeMap        map[string]*Node        // ID -> Node 快速查找
+	executionOrder []*Node                 // 拓扑排序后的执行顺序
 	connectionMap  map[string][]Connection // target_node -> connections
-	mu             sync.RWMutex          // 并发安全
+	flowInfo       *FlowInfo               // 执行流信息（编译时构建）
+	mu             sync.RWMutex            // 并发安全
 }
 
 // NewBlueprint 创建一个新的蓝图

@@ -426,8 +426,12 @@ func (e *Executor) executeWithExecutionFlow(ctx *ExecutionContext, bp *Blueprint
 		return fmt.Errorf("no start node found in blueprint")
 	}
 
-	// 2. 构建连接图
-	flowInfo := e.buildFlowInfo(bp)
+	// 2. 使用预编译的执行流信息（避免每次执行都重新构建）
+	flowInfo := bp.flowInfo
+	if flowInfo == nil {
+		// 如果没有预编译，则构建（兼容性）
+		flowInfo = BuildFlowInfo(bp)
+	}
 
 	// 3. 从Start节点开始递归执行
 	executed := &sync.Map{}
@@ -457,21 +461,21 @@ func (r *returnSignal) IsReturned() bool {
 	return r.returned
 }
 
-// flowInfo 执行流信息
-type flowInfo struct {
-	execFlowMap         map[string]map[string][]*execFlowTarget // 执行流
-	dataFlowMap         map[string]map[string][]string          // 数据流
-	incomingExecMap     map[string]bool                         // 有执行输入的节点
-	needsExecActivation map[string]bool                         // 需要执行引脚激活的节点
+// FlowInfo 执行流信息（编译时构建，运行时使用）
+type FlowInfo struct {
+	ExecFlowMap         map[string]map[string][]*ExecFlowTarget // 执行流
+	DataFlowMap         map[string]map[string][]string          // 数据流
+	IncomingExecMap     map[string]bool                         // 有执行输入的节点
+	NeedsExecActivation map[string]bool                         // 需要执行引脚激活的节点
 }
 
-// buildFlowInfo 构建执行流信息
-func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
-	info := &flowInfo{
-		execFlowMap:         make(map[string]map[string][]*execFlowTarget),
-		dataFlowMap:         make(map[string]map[string][]string),
-		incomingExecMap:     make(map[string]bool),
-		needsExecActivation: make(map[string]bool),
+// BuildFlowInfo 构建执行流信息
+func BuildFlowInfo(bp *Blueprint) *FlowInfo {
+	info := &FlowInfo{
+		ExecFlowMap:         make(map[string]map[string][]*ExecFlowTarget),
+		DataFlowMap:         make(map[string]map[string][]string),
+		IncomingExecMap:     make(map[string]bool),
+		NeedsExecActivation: make(map[string]bool),
 	}
 
 	for _, conn := range bp.Connections {
@@ -498,20 +502,20 @@ func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
 		}
 
 		if sourcePinKind == PinKindExecution {
-			if info.execFlowMap[conn.SourceNode] == nil {
-				info.execFlowMap[conn.SourceNode] = make(map[string][]*execFlowTarget)
+			if info.ExecFlowMap[conn.SourceNode] == nil {
+				info.ExecFlowMap[conn.SourceNode] = make(map[string][]*ExecFlowTarget)
 			}
-			info.execFlowMap[conn.SourceNode][conn.SourcePin] = append(
-				info.execFlowMap[conn.SourceNode][conn.SourcePin],
-				&execFlowTarget{nodeID: conn.TargetNode, execPinName: conn.TargetPin},
+			info.ExecFlowMap[conn.SourceNode][conn.SourcePin] = append(
+				info.ExecFlowMap[conn.SourceNode][conn.SourcePin],
+				&ExecFlowTarget{NodeID: conn.TargetNode, ExecPinName: conn.TargetPin},
 			)
-			info.incomingExecMap[conn.TargetNode] = true
+			info.IncomingExecMap[conn.TargetNode] = true
 		} else {
-			if info.dataFlowMap[conn.SourceNode] == nil {
-				info.dataFlowMap[conn.SourceNode] = make(map[string][]string)
+			if info.DataFlowMap[conn.SourceNode] == nil {
+				info.DataFlowMap[conn.SourceNode] = make(map[string][]string)
 			}
-			info.dataFlowMap[conn.SourceNode][conn.SourcePin] = append(
-				info.dataFlowMap[conn.SourceNode][conn.SourcePin],
+			info.DataFlowMap[conn.SourceNode][conn.SourcePin] = append(
+				info.DataFlowMap[conn.SourceNode][conn.SourcePin],
 				conn.TargetNode,
 			)
 		}
@@ -524,7 +528,7 @@ func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
 				pinKind = PinKindData
 			}
 			if pinKind == PinKindExecution {
-				info.needsExecActivation[node.ID] = true
+				info.NeedsExecActivation[node.ID] = true
 				break
 			}
 		}
@@ -534,7 +538,7 @@ func (e *Executor) buildFlowInfo(bp *Blueprint) *flowInfo {
 }
 
 // executeNodeRecursive 递归执行节点
-func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 检查是否已经通过End节点返回
 	if returned.IsReturned() {
 		return nil
@@ -595,12 +599,12 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 	// 收集要执行的下一批节点（按引脚名排序以保证顺序）
 	var nextNodes []*Node
 	var nextPinNames []string
-	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+	if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
 		for execPinName, targets := range execOutputs {
 			if e.shouldActivateExecPin(node, execPinName) {
 				nextPinNames = append(nextPinNames, execPinName)
 				for _, target := range targets {
-					if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+					if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
 						nextNodes = append(nextNodes, targetNode)
 					}
 				}
@@ -628,7 +632,7 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 }
 
 // executeForLoop 执行 ForLoop 节点的真正循环
-func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 获取循环参数
 	start := 0.0
 	end := 10.0
@@ -684,10 +688,10 @@ func (e *Executor) executeForLoop(ctx *ExecutionContext, bp *Blueprint, node *No
 	var loopBodyNodes []*Node
 	var completedNodes []*Node
 
-	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+	if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
 		for pinName, targets := range execOutputs {
 			for _, target := range targets {
-				if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+				if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
 					if pinName == "loop_body" {
 						loopBodyNodes = append(loopBodyNodes, targetNode)
 					} else if pinName == "completed" {
@@ -791,7 +795,7 @@ func (e *Executor) executeNodeWithTimeout(ctx *ExecutionContext, bp *Blueprint, 
 }
 
 // executeDataDependencies 执行纯数据节点依赖
-func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map) {
+func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map) {
 	// 找到连接到当前节点数据引脚的所有源节点
 	for _, conn := range bp.Connections {
 		if conn.TargetNode != node.ID {
@@ -804,7 +808,7 @@ func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint,
 		}
 
 		// 如果源节点需要执行引脚激活，跳过（会通过执行流执行）
-		if info.needsExecActivation[sourceNode.ID] {
+		if info.NeedsExecActivation[sourceNode.ID] {
 			continue
 		}
 
@@ -818,10 +822,10 @@ func (e *Executor) executeDataDependencies(ctx *ExecutionContext, bp *Blueprint,
 	}
 }
 
-// execFlowTarget 执行流目标
-type execFlowTarget struct {
-	nodeID      string
-	execPinName string
+// ExecFlowTarget 执行流目标
+type ExecFlowTarget struct {
+	NodeID      string
+	ExecPinName string
 }
 
 // shouldActivateExecPin 判断执行引脚是否应该激活
@@ -882,7 +886,7 @@ func (e *Executor) collectNodeInfo(ctx *ExecutionContext, bp *Blueprint) map[str
 
 // executeFork 执行 Fork 节点 - 真正的并行执行
 // Fork 会同时启动所有分支，每个分支独立运行
-func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node, nextNodes []*Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node, nextNodes []*Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	if len(nextNodes) == 0 {
 		return nil
 	}
@@ -896,8 +900,7 @@ func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node,
 		joinID = node.ID // 默认使用节点ID
 	}
 
-	// 创建等待组和完成通道
-	var wg sync.WaitGroup
+	// 创建完成通道
 	branchCount := len(nextNodes)
 	completedChan := make(chan bool, branchCount)
 
@@ -907,10 +910,8 @@ func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node,
 	ctx.SetVariable("__fork_"+joinID+"_chan", completedChan)
 
 	// 并行启动所有分支
-	for i, nextNode := range nextNodes {
-		wg.Add(1)
-		go func(n *Node, branchIndex int) {
-			defer wg.Done()
+	for _, nextNode := range nextNodes {
+		go func(n *Node) {
 			defer func() {
 				// 通知完成
 				completedChan <- true
@@ -928,7 +929,7 @@ func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node,
 			branchExecuted := &sync.Map{}
 
 			e.executeNodeRecursive(ctx, bp, n, info, branchExecuted, branchReturned, depth+1)
-		}(nextNode, i)
+		}(nextNode)
 	}
 
 	// Fork 节点不等待分支完成，立即返回
@@ -937,7 +938,7 @@ func (e *Executor) executeFork(ctx *ExecutionContext, bp *Blueprint, node *Node,
 }
 
 // executeDelay 执行 Delay 节点 - 异步延时，让出执行权
-func (e *Executor) executeDelay(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+func (e *Executor) executeDelay(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 获取延时时间（秒）
 	duration := 1.0
 	if d, ok := node.GetInputValue("duration"); ok {
@@ -946,13 +947,29 @@ func (e *Executor) executeDelay(ctx *ExecutionContext, bp *Blueprint, node *Node
 		}
 	}
 
+	// 使用 AsyncTaskManager 追踪异步任务
+	taskID := fmt.Sprintf("delay_%s_%d", node.ID, time.Now().UnixNano())
+	asyncManager := ctx.GetAsyncManager()
+	task := asyncManager.CreateTask(taskID)
+
 	// 异步延时：启动 goroutine 等待后继续执行
 	go func() {
-		// 等待指定时间
-		time.Sleep(time.Duration(duration * float64(time.Second)))
+		defer asyncManager.RemoveTask(taskID) // 自动清理任务
 
-		// 检查是否已取消或已返回
-		if ctx.IsCancelled() || returned.IsReturned() {
+		// 使用 select 响应取消信号
+		select {
+		case <-time.After(time.Duration(duration * float64(time.Second))):
+			// 延时完成
+		case <-task.Ctx.Done():
+			// 任务被取消
+			return
+		case <-ctx.Context().Done():
+			// 上下文被取消
+			return
+		}
+
+		// 检查是否已返回
+		if returned.IsReturned() {
 			return
 		}
 
@@ -960,11 +977,11 @@ func (e *Executor) executeDelay(ctx *ExecutionContext, bp *Blueprint, node *Node
 		node.SetOutputValue("completed", true)
 
 		// 继续执行后续节点
-		if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+		if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
 			for execPinName, targets := range execOutputs {
 				if e.shouldActivateExecPin(node, execPinName) {
 					for _, target := range targets {
-						if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+						if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
 							e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1)
 						}
 					}
@@ -994,7 +1011,7 @@ func toFloat64Value(v interface{}) (float64, error) {
 }
 
 // executeJoin 执行 Join 节点 - 等待所有 Fork 分支完成
-func (e *Executor) executeJoin(ctx *ExecutionContext, bp *Blueprint, node *Node, info *flowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+func (e *Executor) executeJoin(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
 	// 获取要等待的 fork_id
 	var forkID string
 	if id, ok := node.GetInputValue("fork_id"); ok {
@@ -1053,11 +1070,11 @@ func (e *Executor) executeJoin(ctx *ExecutionContext, bp *Blueprint, node *Node,
 	node.SetOutputValue("branch_count", float64(total))
 
 	// 继续执行后续节点
-	if execOutputs, exists := info.execFlowMap[node.ID]; exists {
+	if execOutputs, exists := info.ExecFlowMap[node.ID]; exists {
 		for execPinName, targets := range execOutputs {
 			if e.shouldActivateExecPin(node, execPinName) {
 				for _, target := range targets {
-					if targetNode := bp.nodeMap[target.nodeID]; targetNode != nil {
+					if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
 						if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
 							return err
 						}

@@ -80,9 +80,13 @@ func (ec *ExecutionContext) Context() context.Context {
 	return ec.ctx
 }
 
-// Cancel 取消执行
+// Cancel 取消执行并清理所有异步任务
 func (ec *ExecutionContext) Cancel() {
 	ec.cancel()
+	// 取消所有异步任务，防止 goroutine 泄漏
+	if ec.asyncManager != nil {
+		ec.asyncManager.CancelAll()
+	}
 }
 
 // GetVariable 获取变量值（并发安全）
