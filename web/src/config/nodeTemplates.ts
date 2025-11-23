@@ -353,9 +353,47 @@ export const nodeTemplates: NodeTemplate[] = [
       { name: 'exec_in', kind: 'exec', type: 'exec' }
     ],
     outputPins: [
-      { name: 'then_0', kind: 'exec', type: 'exec' },
-      { name: 'then_1', kind: 'exec', type: 'exec' },
-      { name: 'then_2', kind: 'exec', type: 'exec' }
+      { name: 'Then 0', kind: 'exec', type: 'exec' },
+      { name: 'Then 1', kind: 'exec', type: 'exec' },
+      { name: 'Then 2', kind: 'exec', type: 'exec' }
+    ]
+  },
+  {
+    type: 'flow_control',
+    operation: 'switch',
+    label: 'Switch',
+    description: '根据值选择执行分支',
+    category: '控制流',
+    icon: '⚡',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'selection', kind: 'data', type: 'any', value: 0 }
+    ],
+    outputPins: [
+      { name: 'case_0', kind: 'exec', type: 'exec' },
+      { name: 'case_1', kind: 'exec', type: 'exec' },
+      { name: 'case_2', kind: 'exec', type: 'exec' },
+      { name: 'default', kind: 'exec', type: 'exec' }
+    ]
+  },
+  {
+    type: 'flow_control',
+    operation: 'foreach',
+    label: 'ForEach',
+    description: '遍历数组并对每个元素执行',
+    category: '控制流',
+    icon: '🔁',
+    color: '#9C27B0',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'array', kind: 'data', type: 'any', value: [] }
+    ],
+    outputPins: [
+      { name: 'loop_body', kind: 'exec', type: 'exec' },
+      { name: 'completed', kind: 'exec', type: 'exec' },
+      { name: 'element', kind: 'data', type: 'any' },
+      { name: 'index', kind: 'data', type: 'float' }
     ]
   },
 
@@ -453,6 +491,26 @@ export const nodeTemplates: NodeTemplate[] = [
     outputPins: [
       { name: 'exec_out', kind: 'exec', type: 'exec' },
       { name: 'value', kind: 'data', type: 'any' }
+    ]
+  },
+
+  // ==================== 函数节点 ====================
+  {
+    type: 'function',
+    operation: 'add',
+    label: '函数：Add',
+    description: '调用 Add 函数',
+    category: '函数',
+    icon: 'ƒ',
+    color: '#673AB7',
+    inputPins: [
+      { name: 'exec_in', kind: 'exec', type: 'exec' },
+      { name: 'a', kind: 'data', type: 'float', value: 0 },
+      { name: 'b', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'exec_out', kind: 'exec', type: 'exec' },
+      { name: 'sum', kind: 'data', type: 'float' }
     ]
   },
 

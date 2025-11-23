@@ -3,7 +3,17 @@
  * 与 Go 后端的 JSON 格式保持一致
  */
 
-export type NodeType = 'start' | 'end' | 'arithmetic' | 'logic' | 'condition' | 'function'
+export type NodeType =
+  | 'start'
+  | 'end'
+  | 'arithmetic'
+  | 'logic'
+  | 'flow_control'
+  | 'data'
+  | 'variable'
+  | 'debug'
+  | 'async'
+  | 'function'
 
 export interface Position {
   x: number
