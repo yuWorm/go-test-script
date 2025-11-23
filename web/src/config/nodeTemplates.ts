@@ -474,6 +474,194 @@ export const nodeTemplates: NodeTemplate[] = [
     ]
   },
 
+  // ==================== 数组节点 ====================
+  {
+    type: 'data',
+    operation: 'make_array',
+    label: '创建数组',
+    description: '创建数组（纯数据节点）',
+    category: '数组',
+    icon: '[]',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'element_0', kind: 'data', type: 'any', value: 0 },
+      { name: 'element_1', kind: 'data', type: 'any', value: 0 },
+      { name: 'element_2', kind: 'data', type: 'any', value: 0 }
+    ],
+    outputPins: [
+      { name: 'array', kind: 'data', type: 'any' },
+      { name: 'length', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'array_get',
+    label: '获取数组元素',
+    description: '根据索引获取数组元素（纯数据节点）',
+    category: '数组',
+    icon: '[i]',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'array', kind: 'data', type: 'any' },
+      { name: 'index', kind: 'data', type: 'float', value: 0 }
+    ],
+    outputPins: [
+      { name: 'element', kind: 'data', type: 'any' },
+      { name: 'found', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'array_set',
+    label: '设置数组元素',
+    description: '设置指定索引的数组元素（纯数据节点）',
+    category: '数组',
+    icon: '[i]=',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'array', kind: 'data', type: 'any' },
+      { name: 'index', kind: 'data', type: 'float', value: 0 },
+      { name: 'value', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'array', kind: 'data', type: 'any' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'array_add',
+    label: '添加数组元素',
+    description: '向数组末尾添加元素（纯数据节点）',
+    category: '数组',
+    icon: '[+]',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'array', kind: 'data', type: 'any' },
+      { name: 'element', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'array', kind: 'data', type: 'any' },
+      { name: 'length', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'array_length',
+    label: '数组长度',
+    description: '获取数组长度（纯数据节点）',
+    category: '数组',
+    icon: '#',
+    color: '#FF5722',
+    inputPins: [
+      { name: 'array', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'length', kind: 'data', type: 'float' }
+    ]
+  },
+
+  // ==================== Map 节点 ====================
+  {
+    type: 'data',
+    operation: 'make_map',
+    label: '创建 Map',
+    description: '创建 Map 字典（纯数据节点）',
+    category: 'Map',
+    icon: '{}',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'key_0', kind: 'data', type: 'string', value: '' },
+      { name: 'value_0', kind: 'data', type: 'any', value: 0 },
+      { name: 'key_1', kind: 'data', type: 'string', value: '' },
+      { name: 'value_1', kind: 'data', type: 'any', value: 0 }
+    ],
+    outputPins: [
+      { name: 'map', kind: 'data', type: 'any' },
+      { name: 'size', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'map_get',
+    label: '获取 Map 值',
+    description: '根据键获取 Map 值（纯数据节点）',
+    category: 'Map',
+    icon: '{k}',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'map', kind: 'data', type: 'any' },
+      { name: 'key', kind: 'data', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'value', kind: 'data', type: 'any' },
+      { name: 'found', kind: 'data', type: 'bool' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'map_set',
+    label: '设置 Map 值',
+    description: '设置 Map 键值对（纯数据节点）',
+    category: 'Map',
+    icon: '{k}=',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'map', kind: 'data', type: 'any' },
+      { name: 'key', kind: 'data', type: 'string', value: '' },
+      { name: 'value', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'map', kind: 'data', type: 'any' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'map_remove',
+    label: '删除 Map 键',
+    description: '删除 Map 中的键值对（纯数据节点）',
+    category: 'Map',
+    icon: '{-}',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'map', kind: 'data', type: 'any' },
+      { name: 'key', kind: 'data', type: 'string', value: '' }
+    ],
+    outputPins: [
+      { name: 'map', kind: 'data', type: 'any' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'map_keys',
+    label: 'Map 所有键',
+    description: '获取 Map 的所有键（纯数据节点）',
+    category: 'Map',
+    icon: '{K}',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'map', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'keys', kind: 'data', type: 'any' },
+      { name: 'count', kind: 'data', type: 'float' }
+    ]
+  },
+  {
+    type: 'data',
+    operation: 'map_size',
+    label: 'Map 大小',
+    description: '获取 Map 大小（纯数据节点）',
+    category: 'Map',
+    icon: '#{',
+    color: '#00BCD4',
+    inputPins: [
+      { name: 'map', kind: 'data', type: 'any' }
+    ],
+    outputPins: [
+      { name: 'size', kind: 'data', type: 'float' }
+    ]
+  },
+
   // ==================== 变量操作节点（可执行） ====================
   {
     type: 'variable',

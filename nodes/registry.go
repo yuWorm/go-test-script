@@ -45,6 +45,21 @@ func RegisterAllNodes(registry *blueprint.NodeRegistry) {
 	registry.Register(blueprint.NodeTypeData, "make_bool", NewMakeValueExecutor("bool"))
 	registry.Register(blueprint.NodeTypeData, "make_string", NewMakeValueExecutor("string"))
 
+	// ==================== 数组节点 ====================
+	registry.Register(blueprint.NodeTypeData, "make_array", NewMakeArrayExecutor())
+	registry.Register(blueprint.NodeTypeData, "array_get", NewArrayGetExecutor())
+	registry.Register(blueprint.NodeTypeData, "array_set", NewArraySetExecutor())
+	registry.Register(blueprint.NodeTypeData, "array_add", NewArrayAddExecutor())
+	registry.Register(blueprint.NodeTypeData, "array_length", NewArrayLengthExecutor())
+
+	// ==================== Map 节点 ====================
+	registry.Register(blueprint.NodeTypeData, "make_map", NewMakeMapExecutor())
+	registry.Register(blueprint.NodeTypeData, "map_get", NewMapGetExecutor())
+	registry.Register(blueprint.NodeTypeData, "map_set", NewMapSetExecutor())
+	registry.Register(blueprint.NodeTypeData, "map_remove", NewMapRemoveExecutor())
+	registry.Register(blueprint.NodeTypeData, "map_keys", NewMapKeysExecutor())
+	registry.Register(blueprint.NodeTypeData, "map_size", NewMapSizeExecutor())
+
 	// ==================== 变量操作节点（可执行） ====================
 	registry.Register(blueprint.NodeTypeVariable, "set_variable", NewVariableSetExecutor())
 
