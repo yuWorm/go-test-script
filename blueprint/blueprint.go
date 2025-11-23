@@ -308,3 +308,40 @@ func isValidIdentifier(s string) bool {
 	}
 	return true
 }
+
+// FunctionRegistry 函数蓝图注册表
+type FunctionRegistry struct {
+	functions map[string]*Blueprint // function_name -> Blueprint
+	mu        sync.RWMutex
+}
+
+// NewFunctionRegistry 创建函数注册表
+func NewFunctionRegistry() *FunctionRegistry {
+	return &FunctionRegistry{
+		functions: make(map[string]*Blueprint),
+	}
+}
+
+// RegisterFunction 注册函数蓝图
+func (fr *FunctionRegistry) RegisterFunction(name string, bp *Blueprint) error {
+	fr.mu.Lock()
+	defer fr.mu.Unlock()
+
+	if !bp.IsCompiled() {
+		return fmt.Errorf("function blueprint %s must be compiled before registration", name)
+	}
+
+	fr.functions[name] = bp
+	return nil
+}
+
+// GetFunction 获取函数蓝图
+func (fr *FunctionRegistry) GetFunction(name string) (*Blueprint, error) {
+	fr.mu.RLock()
+	defer fr.mu.RUnlock()
+
+	if bp, exists := fr.functions[name]; exists {
+		return bp, nil
+	}
+	return nil, fmt.Errorf("function %s not found", name)
+}

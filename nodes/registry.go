@@ -32,7 +32,9 @@ func RegisterAllNodes(registry *blueprint.NodeRegistry) {
 	registry.Register(blueprint.NodeTypeFlowControl, "branch", NewBranchExecutor())
 	registry.Register(blueprint.NodeTypeFlowControl, "for_loop", NewForLoopExecutor())
 	registry.Register(blueprint.NodeTypeFlowControl, "while_loop", NewWhileLoopExecutor())
+	registry.Register(blueprint.NodeTypeFlowControl, "foreach", NewForEachExecutor())
 	registry.Register(blueprint.NodeTypeFlowControl, "sequence", NewSequenceExecutor())
+	registry.Register(blueprint.NodeTypeFlowControl, "switch", NewSwitchExecutor())
 	registry.Register(blueprint.NodeTypeFlowControl, "fork", NewForkExecutor())   // 并行分叉
 	registry.Register(blueprint.NodeTypeFlowControl, "join", NewJoinExecutor())   // 等待汇合
 

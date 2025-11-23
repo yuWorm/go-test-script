@@ -655,6 +655,21 @@ func (e *Executor) executeNodeRecursive(ctx *ExecutionContext, bp *Blueprint, no
 		return e.executeWhileLoop(ctx, bp, node, info, executed, returned, depth)
 	}
 
+	// ForEach 节点特殊处理：遍历数组
+	if node.Type == NodeTypeFlowControl && node.Operation == "foreach" {
+		return e.executeForEach(ctx, bp, node, info, executed, returned, depth)
+	}
+
+	// Sequence 节点特殊处理：顺序执行所有输出分支
+	if node.Type == NodeTypeFlowControl && node.Operation == "sequence" {
+		return e.executeSequenceNode(ctx, bp, node, info, executed, returned, depth)
+	}
+
+	// Switch 节点特殊处理：根据值选择分支
+	if node.Type == NodeTypeFlowControl && node.Operation == "switch" {
+		return e.executeSwitchNode(ctx, bp, node, info, executed, returned, depth)
+	}
+
 	// Delay 节点特殊处理：异步延时，让出执行权
 	if node.Type == NodeTypeAsync && node.Operation == "delay" {
 		return e.executeDelay(ctx, bp, node, info, executed, returned, depth)
@@ -1302,6 +1317,191 @@ func (e *Executor) executeJoin(ctx *ExecutionContext, bp *Blueprint, node *Node,
 							return err
 						}
 					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// executeSequenceNode 执行 Sequence 节点（顺序触发所有输出引脚）
+func (e *Executor) executeSequenceNode(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 获取所有执行输出引脚并排序（Then 0, Then 1, Then 2...）
+	execOutputs, exists := info.ExecFlowMap[node.ID]
+	if !exists {
+		return nil
+	}
+
+	// 收集所有 exec 输出引脚
+	var pinNames []string
+	for pinName := range execOutputs {
+		pinNames = append(pinNames, pinName)
+	}
+
+	// 按引脚名排序（保证 Then 0 -> Then 1 -> Then 2）
+	// 简单排序即可，因为 Then 0, Then 1, Then 2 按字符串排序也是正确顺序
+	// 但为了更准确，我们可以手动排序
+	for i := 0; i < len(pinNames); i++ {
+		for j := i + 1; j < len(pinNames); j++ {
+			if pinNames[i] > pinNames[j] {
+				pinNames[i], pinNames[j] = pinNames[j], pinNames[i]
+			}
+		}
+	}
+
+	// 按顺序执行每个输出分支
+	for _, pinName := range pinNames {
+		if returned.IsReturned() {
+			return nil
+		}
+
+		targets := execOutputs[pinName]
+		for _, target := range targets {
+			if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+				if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+					if e.options.StopOnError {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// executeSwitchNode 执行 Switch 节点（根据值选择分支）
+func (e *Executor) executeSwitchNode(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 从输出缓存获取选择值
+	selectedIndex, hasIndex := node.GetOutputValue("selected_index")
+	selectedValue, hasValue := node.GetOutputValue("selected_value")
+
+	execOutputs, exists := info.ExecFlowMap[node.ID]
+	if !exists {
+		return nil
+	}
+
+	// 根据选择值找到对应的输出引脚
+	var targetPinName string
+
+	if hasIndex {
+		// 数值类型：匹配 case_0, case_1, case_2...
+		idx := 0
+		if floatVal, err := toFloat64Value(selectedIndex); err == nil {
+			idx = int(floatVal)
+		}
+		targetPinName = fmt.Sprintf("case_%d", idx)
+	} else if hasValue {
+		// 字符串类型：匹配 case_xxx
+		str := selectedValue.(string)
+		targetPinName = fmt.Sprintf("case_%s", str)
+	}
+
+	// 尝试执行匹配的分支
+	if targets, exists := execOutputs[targetPinName]; exists {
+		for _, target := range targets {
+			if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+				if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// 如果没有匹配，执行 default 分支
+	if targets, exists := execOutputs["default"]; exists {
+		for _, target := range targets {
+			if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+				if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// executeForEach 执行 ForEach 节点（遍历数组）
+func (e *Executor) executeForEach(ctx *ExecutionContext, bp *Blueprint, node *Node, info *FlowInfo, executed *sync.Map, returned *returnSignal, depth int) error {
+	// 从输出缓存获取数组
+	arrayValue, exists := node.GetOutputValue("array")
+	if !exists {
+		return fmt.Errorf("foreach array not found")
+	}
+
+	array, ok := arrayValue.([]interface{})
+	if !ok {
+		return fmt.Errorf("foreach array must be []interface{}, got %T", arrayValue)
+	}
+
+	// 查找 loop_body 执行引脚连接
+	execOutputs, exists := info.ExecFlowMap[node.ID]
+	if !exists {
+		return nil
+	}
+
+	loopBodyTargets, hasLoopBody := execOutputs["loop_body"]
+	if !hasLoopBody || len(loopBodyTargets) == 0 {
+		// 没有 loop body，跳过循环，直接执行 completed
+		if completedTargets, exists := execOutputs["completed"]; exists {
+			for _, target := range completedTargets {
+				if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+					return e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1)
+				}
+			}
+		}
+		return nil
+	}
+
+	// 遍历数组
+	iterationCount := 0
+	for idx, element := range array {
+		// 检查是否已返回
+		if returned.IsReturned() {
+			break
+		}
+
+		// 检查是否取消
+		if ctx.IsCancelled() {
+			return fmt.Errorf("execution cancelled during foreach")
+		}
+
+		// 检查最大迭代次数
+		if e.options.MaxIterations > 0 && iterationCount >= e.options.MaxIterations {
+			return fmt.Errorf("foreach iteration count %d exceeds maximum allowed %d", iterationCount, e.options.MaxIterations)
+		}
+
+		// 更新循环索引和元素到输出缓存
+		node.SetOutputValue("index", float64(idx))
+		node.SetOutputValue("element", element)
+		node.SetOutputValue("array_index", float64(idx))
+
+		// 创建局部执行标记（每次循环体独立）
+		loopExecuted := &sync.Map{}
+
+		// 执行循环体
+		for _, target := range loopBodyTargets {
+			if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+				if err := e.executeNodeRecursive(ctx, bp, targetNode, info, loopExecuted, returned, depth+1); err != nil {
+					if e.options.StopOnError {
+						return err
+					}
+				}
+			}
+		}
+
+		iterationCount++
+	}
+
+	// 循环完成后，执行 completed 分支
+	if completedTargets, exists := execOutputs["completed"]; exists {
+		for _, target := range completedTargets {
+			if targetNode := bp.nodeMap[target.NodeID]; targetNode != nil {
+				if err := e.executeNodeRecursive(ctx, bp, targetNode, info, executed, returned, depth+1); err != nil {
+					return err
 				}
 			}
 		}
