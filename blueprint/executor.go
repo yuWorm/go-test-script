@@ -346,6 +346,18 @@ func (e *Executor) executeNode(ctx *ExecutionContext, bp *Blueprint, node *Node)
 		}
 	}
 
+	// 特殊处理：Start 节点从变量中获取输入（用于函数参数传递）
+	if node.Type == NodeTypeStart {
+		for _, pin := range node.InputPins {
+			// 如果输入还没有值，尝试从变量中获取
+			if _, exists := inputs[pin.Name]; !exists {
+				if varValue, exists := ctx.GetVariableFast(pin.Name); exists {
+					inputs[pin.Name] = varValue
+				}
+			}
+		}
+	}
+
 	// 执行节点
 	if node.executor == nil {
 		return fmt.Errorf("node %s has no executor", node.ID)
